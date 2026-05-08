@@ -22,7 +22,7 @@ export const NavBar = () => {
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            className="py-2 px-10 rounded-xl text-md bg-radial-[at_25%_25%] from-[#7F20E4] to-[#0080A9] to-75% cursor-pointer"
+            className="py-2 px-10 rounded-xl text-md bg-radial-[at_25%_25%] from-[#7F20E4] to-[#0080A9] to-75% cursor-pointer text-white font-bold"
             onClick={walletAddress ? disconnectWallet : connectWallet}
           >
             Connect Wallet

@@ -83,7 +83,7 @@ export default function Home() {
         <NavBar />
         <div className="flex flex-col items-center justify-start overflow-y-auto relative">
           <div className="rounded-full w-180 aspect-square bg-[#0080A9] opacity-20 absolute left-1/2 -top-65 transform -translate-x-1/2 z-0 blur-3xl"></div>
-          <section className="flex flex-col items-center justify-center p-14 gap-8 w-full">
+          <section className="flex flex-col items-center justify-center p-14 gap-8 w-full z-1">
             <h4 className="text-md font-bold tracking-widest text-[#7F20E4]">
               IDENTITY ON SOLANA
             </h4>
