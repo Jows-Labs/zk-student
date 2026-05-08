@@ -1,0 +1,40 @@
+"use client";
+
+import { useContentContext } from "@/lib/content-context";
+import { motion } from "motion/react";
+
+export const NavBar = () => {
+  const { walletAddress, connectWallet, disconnectWallet } =
+    useContentContext();
+
+  const addressText = walletAddress || "";
+  const maxCharacters = 8;
+  const truncatedAddress =
+    addressText.length > maxCharacters
+      ? addressText.slice(0, maxCharacters) + "..."
+      : addressText;
+
+  return (
+    <nav className="w-full py-4 flex items-center justify-between px-8 bg-gradient-to-r from-white via-white/60 to-white drop-shadow-xl/2">
+      <h1 className="text-4xl font-bold text-[#7F20E4]">ZK Student</h1>
+      <div className="flex items-center gap-6">
+        {!walletAddress && (
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            className="py-2 px-10 rounded-xl text-md bg-radial-[at_25%_25%] from-[#7F20E4] to-[#0080A9] to-75% cursor-pointer"
+            onClick={walletAddress ? disconnectWallet : connectWallet}
+          >
+            Connect Wallet
+          </motion.button>
+        )}
+        {truncatedAddress && (
+          <div className="flex items-center gap-2 text-sm bg-[#F3F4F5] py-2 px-4 rounded-2xl border border-[#CEC2D8]/30">
+            <span className="rounded-full bg-[#34FEA0] w-2 h-2"></span>
+            {truncatedAddress}
+          </div>
+        )}
+      </div>
+    </nav>
+  );
+};
