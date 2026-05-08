@@ -8,6 +8,18 @@ import {
   type ReactNode,
 } from "react";
 
+interface PhantomWallet {
+  isPhantom: boolean;
+  connect: (options?: { onlyIfTrusted?: boolean }) => Promise<{
+    publicKey: { toString: () => string };
+  }>;
+  disconnect: () => Promise<void>;
+}
+
+interface SolanaWindow extends Window {
+  solana?: PhantomWallet;
+}
+
 type ContentContextProviderProps = {
   children: ReactNode;
 };
@@ -37,27 +49,8 @@ export function useContentContext() {
 export function ContextProvider({ children }: ContentContextProviderProps) {
   const [walletAddress, setWalletAddress] = useState<string>("");
 
-  const checkIfWalletIsConnected = async () => {
-    const { solana } = window as any;
-
-    try {
-      if (!solana) {
-        alert("Phantom wallet not found.");
-        return;
-      }
-
-      if (solana.isPhantom) {
-        const response = await solana.connect({ onlyIfTrusted: true });
-
-        setWalletAddress(response.publicKey.toString());
-      }
-    } catch (error) {
-      console.error("Error checking wallet connection:", error);
-    }
-  };
-
   const connectWallet = async () => {
-    const { solana } = window as any;
+    const solana = (window as SolanaWindow).solana;
 
     try {
       if (!solana) {
@@ -73,7 +66,7 @@ export function ContextProvider({ children }: ContentContextProviderProps) {
   };
 
   const disconnectWallet = async () => {
-    const { solana } = window as any;
+    const solana = (window as SolanaWindow).solana;
 
     try {
       if (!solana) {
@@ -87,6 +80,25 @@ export function ContextProvider({ children }: ContentContextProviderProps) {
   };
 
   useEffect(() => {
+    const checkIfWalletIsConnected = async () => {
+      const solana = (window as SolanaWindow).solana;
+
+      try {
+        if (!solana) {
+          alert("Phantom wallet not found.");
+          return;
+        }
+
+        if (solana.isPhantom) {
+          const response = await solana.connect({ onlyIfTrusted: true });
+
+          setWalletAddress(response.publicKey.toString());
+        }
+      } catch (error) {
+        console.error("Error checking wallet connection:", error);
+      }
+    };
+
     void checkIfWalletIsConnected();
   }, []);
 
