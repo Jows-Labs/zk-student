@@ -12,6 +12,7 @@ import {
 } from "react-icons/md";
 import Image from "next/image";
 import SolanaIcon from "@/public/images/solana.png";
+import { useRouter } from "next/navigation";
 
 const step = 3;
 
@@ -77,6 +78,7 @@ const StepText = ({
 };
 
 export default function Home() {
+  const router = useRouter();
   return (
     <div className="flex flex-col w-full h-screen relative bg-white z-10 text-black">
       <NavBar />
@@ -99,6 +101,7 @@ export default function Home() {
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               className="py-4 px-12 flex items-center gap-1 rounded-xl text-xl bg-radial-[at_25%_25%] from-[#7F20E4] to-[#0080A9] to-75% cursor-pointer text-white"
+              onClick={() => router.push("/app")}
             >
               <p className="text-nowrap">Launch App</p>
               <IoMdArrowForward className="h-7 w-auto" />
