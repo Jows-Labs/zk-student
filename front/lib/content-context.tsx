@@ -10,6 +10,8 @@ import {
 
 interface PhantomWallet {
   isPhantom: boolean;
+  isConnected?: boolean;
+  publicKey?: { toString: () => string } | null;
   connect: (options?: { onlyIfTrusted?: boolean }) => Promise<{
     publicKey: { toString: () => string };
   }>;
@@ -47,7 +49,7 @@ export function useContentContext() {
 }
 
 export function ContextProvider({ children }: ContentContextProviderProps) {
-  const [walletAddress, setWalletAddress] = useState<string>("");
+  const [walletAddress, setWalletAddress] = useState<string | null>(null);
 
   const connectWallet = async () => {
     const solana = (window as SolanaWindow).solana;
@@ -61,7 +63,7 @@ export function ContextProvider({ children }: ContentContextProviderProps) {
 
       setWalletAddress(response.publicKey.toString());
     } catch (error) {
-      console.error("Error connecting wallet:", error);
+      console.log("Error connecting wallet:", error);
     }
   };
 
@@ -73,7 +75,7 @@ export function ContextProvider({ children }: ContentContextProviderProps) {
         return;
       }
       await solana.disconnect();
-      setWalletAddress("");
+      setWalletAddress(null);
     } catch (error) {
       console.error("Error disconnecting wallet:", error);
     }
@@ -89,10 +91,13 @@ export function ContextProvider({ children }: ContentContextProviderProps) {
           return;
         }
 
-        if (solana.isPhantom) {
-          const response = await solana.connect({ onlyIfTrusted: true });
+        if (solana.isPhantom && solana.publicKey) {
+          setWalletAddress(solana.publicKey.toString());
+          return;
+        }
 
-          setWalletAddress(response.publicKey.toString());
+        if (solana.isPhantom && solana.isConnected) {
+          setWalletAddress(solana.publicKey?.toString() ?? null);
         }
       } catch (error) {
         console.error("Error checking wallet connection:", error);
