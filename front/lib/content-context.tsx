@@ -62,7 +62,7 @@ export function useContentContext() {
 
 export function ContextProvider({ children }: ContentContextProviderProps) {
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
-  const [createCertificateStep, setCreateCertificateStep] = useState(3);
+  const [createCertificateStep, setCreateCertificateStep] = useState<number>(0);
   const [primaryDomain, setPrimaryDomain] = useState<string | null>(null);
 
   const fetchPrimaryDomain = async (address: string) => {
