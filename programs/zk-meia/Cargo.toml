@@ -1,0 +1,18 @@
+[package]
+name    = "zk-meia"
+version.workspace = true
+edition.workspace = true
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name       = "zk_meia"
+
+[features]
+idl-build = ["anchor-lang/idl-build", "zk-student-protocol/idl-build"]
+
+[lints]
+workspace = true
+
+[dependencies]
+anchor-lang         = { workspace = true }
+zk-student-protocol = { path = "../zk-student-protocol", features = ["cpi"] }
