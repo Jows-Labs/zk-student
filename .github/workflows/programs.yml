@@ -16,7 +16,7 @@ on:
       - ".github/workflows/programs.yml"
 
 env:
-  SOLANA_VERSION: "3.1.15"
+  SOLANA_VERSION: "3.1.14"
   ANCHOR_VERSION: "0.32.1"
   CARGO_TERM_COLOR: always
 
@@ -53,7 +53,7 @@ jobs:
         uses: actions/cache@v4
         id: cache-solana
         with:
-          path: ~/.local/share/solana
+          path: ~/.local/share/solana/install/releases
           key: solana-${{ env.SOLANA_VERSION }}-${{ runner.os }}
 
       - name: Install Agave ${{ env.SOLANA_VERSION }}
@@ -61,7 +61,12 @@ jobs:
         run: sh -c "$(curl -sSfL https://release.anza.xyz/v${{ env.SOLANA_VERSION }}/install)"
 
       - name: Add Solana tools to PATH
-        run: echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
+        run: |
+          RELEASES="$HOME/.local/share/solana/install/releases"
+          RELEASE_DIR=$(ls -1 "$RELEASES" 2>/dev/null | head -1)
+          ln -sfn "$RELEASES/$RELEASE_DIR/solana-release" \
+            "$HOME/.local/share/solana/install/active_release"
+          echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
 
       - name: Cache Anchor CLI
         uses: actions/cache@v4
@@ -69,6 +74,10 @@ jobs:
         with:
           path: ~/.cargo/bin/anchor
           key: anchor-${{ env.ANCHOR_VERSION }}-${{ runner.os }}
+
+      - name: Install system dependencies
+        if: steps.cache-anchor.outputs.cache-hit != 'true'
+        run: sudo apt-get update && sudo apt-get install -y libudev-dev
 
       - name: Install Anchor CLI
         if: steps.cache-anchor.outputs.cache-hit != 'true'
