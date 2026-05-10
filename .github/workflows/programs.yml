@@ -2,6 +2,7 @@ name: Programs
 
 on:
   push:
+    branches: ["main"]
     paths:
       - "programs/**"
       - "Cargo.toml"
