@@ -11,7 +11,7 @@ pub mod zk_meia {
 
     pub fn claim_discount(ctx: Context<ClaimDiscount>) -> Result<()> {
         emit!(DiscountClaimed {
-            wallet:     ctx.accounts.wallet.key(),
+            wallet: ctx.accounts.wallet.key(),
             expires_at: ctx.accounts.credential.expires_at,
         });
         Ok(())
@@ -30,12 +30,12 @@ pub struct ClaimDiscount<'info> {
             @ ZkMeiaError::CredentialExpired,
     )]
     pub credential: Account<'info, StudentCredential>,
-    pub wallet:     Signer<'info>,
+    pub wallet: Signer<'info>,
 }
 
 #[event]
 pub struct DiscountClaimed {
-    pub wallet:     Pubkey,
+    pub wallet: Pubkey,
     pub expires_at: i64,
 }
 
