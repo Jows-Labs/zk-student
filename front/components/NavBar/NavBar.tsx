@@ -2,11 +2,12 @@
 
 import { useContentContext } from "@/lib/content-context";
 import { motion } from "motion/react";
-import { useRouter } from "next/navigation";
+import ZKSLogo from "@/public/images/logo.png";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 import SnsIcon from "@/public/images/sns.png";
 import { FiLogOut } from "react-icons/fi";
-import { useState } from "react";
 
 export const NavBar = () => {
   const router = useRouter();
@@ -23,14 +24,18 @@ export const NavBar = () => {
   const [logoutHover, setLogoutHover] = useState(false);
 
   return (
-    <nav className="w-full py-4 flex items-center justify-between px-8 bg-gradient-to-r from-white via-white/60 to-white drop-shadow-xl/2">
-      <h1
-        className="text-4xl font-bold text-[#7F20E4] cursor-pointer"
-        onClick={() => router.push("/")}
-      >
-        ZK Student
-      </h1>
-      <div className="flex items-center gap-6">
+    <nav className="w-full flex items-center justify-between px-8 bg-gradient-to-r from-white via-white/60 to-white drop-shadow-xl/2">
+      <div className="flex items-center gap-4" onClick={() => router.push("/")}>
+        <Image
+          src={ZKSLogo}
+          alt="ZK Student Logo"
+          className="h-12 w-auto border-r-2 border-[#E3E0F1] p-2 pr-4"
+        />
+        <h1 className="text-4xl font-bold text-[#7F20E4] inline-block align-baseline py-4">
+          ZK Student
+        </h1>
+      </div>
+      <div className="flex items-center gap-6 py-4">
         {!walletAddress && (
           <motion.button
             whileHover={{ scale: 1.05 }}

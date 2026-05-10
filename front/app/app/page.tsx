@@ -64,11 +64,11 @@ export default function App() {
               protocol-gated benefits.
             </p>
           </div>
-          <div className="flex w-fit gap-8 relative">
+          <div className="flex xl:flex-row flex-col w-fit gap-8 relative">
             <div className="rounded-4xl w-160 h-120 bg-[#7F20E4] opacity-20 absolute -left-20 top-1/2 transform -translate-y-1/2 blur-3xl z-0"></div>
             <div className="rounded-4xl w-120 h-120 bg-[#0080A9] opacity-20 absolute -right-20 top-3/5 transform -translate-y-1/2 blur-3xl z-0"></div>
             <div className="flex flex-col gap-6 w-full z-1">
-              <div className="flex gap-10 justify-center items-center py-12 px-10 bg-white/80 border-white/30 backdrop-blur-sm rounded-3xl h-fit z-1">
+              <div className="flex gap-10 justify-center items-center py-12 px-10 bg-white/80 border-white/30 backdrop-blur-sm rounded-3xl min-w-180 h-fit z-1">
                 <div className="flex flex-col gap-12 justify-between w-full min-h-full">
                   <div className="flex flex-col gap-4 justify-start">
                     <div className="flex gap-2 items-center text-[#7F20E4] bg-[#7F20E4]/10 rounded-full py-2 px-6 w-fit">
@@ -95,12 +95,7 @@ export default function App() {
                     <IoMdArrowForward className="h-7 w-auto" />
                   </motion.div>
                 </div>
-                <Image
-                  src={Figure}
-                  alt="Neural Figure"
-                  className="w-auto h-70 rounded-2xl border-4 border-white shadow-2xl"
-                  loading="eager"
-                />
+                <div className="aspect-square min-h-70 rounded-2xl border-4 border-white shadow-2xl bg-radial from-white from 40% to-[#a79eb8]" />
               </div>
               <div className="flex flex-col gap-10 justify-center items-center py-10 px-10 bg-white/60 border border-white/20 backdrop-blur-sm rounded-3xl h-fit z-1">
                 <div className="w-full flex justify-between items-center gap-8">
@@ -116,7 +111,7 @@ export default function App() {
                 </div>
               </div>
             </div>
-            <div className="flex flex-col gap-8">
+            <div className="flex xl:flex-col flex-row gap-8">
               <div className="flex flex-col gap-4 justify-start items-start p-6 border h-fit w-100 rounded-3xl bg-white/60 backdrop-blur-sm border-white/20">
                 <p className="text-md font-semibold text-[#4C4355]">
                   NETWORK STATUS
