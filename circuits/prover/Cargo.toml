@@ -26,4 +26,4 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 zk-student-types = { path = "../types" }
 
 [build-dependencies]
-sp1-build = "6"
+sp1-build = "5"
