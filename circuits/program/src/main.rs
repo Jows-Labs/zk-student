@@ -20,8 +20,8 @@ pub fn main() {
     // none are free witness fields, so they cannot be forged without a valid issuer signature.
     let ac = parse_der(&witness.cert_der).expect("invalid cert DER");
 
-    let issuer_pubkey = RsaPublicKey::from_pkcs1_der(&witness.issuer_pubkey)
-        .expect("invalid RSA public key DER");
+    let issuer_pubkey =
+        RsaPublicKey::from_pkcs1_der(&witness.issuer_pubkey).expect("invalid RSA public key DER");
     let issuer_pubkey_hash: [u8; 32] = Sha256::digest(&witness.issuer_pubkey).into();
 
     // SHA256(issuer_pubkey_hash || SHA256(tbs_bytes)) — unique per cert, prevents replay across issuers.

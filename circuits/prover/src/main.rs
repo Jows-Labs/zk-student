@@ -66,7 +66,12 @@ async fn handle_mock_execute(
     let not_after = req.not_after.as_deref().unwrap_or("20270331235959Z");
     let current_timestamp = req.current_timestamp.unwrap_or_else(unix_now);
 
-    let witness = mock::make_mock_witness(birth_date, not_after, req.credential_type, current_timestamp)?;
+    let witness = mock::make_mock_witness(
+        birth_date,
+        not_after,
+        req.credential_type,
+        current_timestamp,
+    )?;
     let pv = prove::execute(witness).await?;
     Ok(Json(serde_json::to_value(&pv)?))
 }
