@@ -1,5 +1,5 @@
 #![cfg(test)]
-#![allow(deprecated)]
+#![allow(deprecated, unused_imports)]
 
 use anchor_lang::AccountDeserialize;
 use borsh::BorshSerialize;
@@ -1001,4 +1001,112 @@ async fn test_renew_rejects_stale_proof() {
         ))
         .await
         .is_err());
+}
+
+#[tokio::test]
+async fn test_issue_credential_from_pem_cert() {
+    use sha2::{Digest, Sha256};
+    use zk_student::{
+        cert::parse_der,
+        mock::{mock_cert, mock_issuer_pubkey_der},
+    };
+
+    // Reproduce the exact computation the SP1 circuit performs.
+    let mc = mock_cert();
+    let issuer_der = mock_issuer_pubkey_der();
+
+    let ac = parse_der(&mc.der).expect("parse mock cert DER");
+
+    let issuer_pubkey_hash: [u8; 32] = Sha256::digest(&issuer_der).into();
+    let tbs_hash: [u8; 32] = Sha256::digest(&ac.tbs_bytes).into();
+    let cert_nullifier: [u8; 32] = {
+        let mut h = Sha256::new();
+        h.update(issuer_pubkey_hash);
+        h.update(tbs_hash);
+        h.finalize().into()
+    };
+    const UNIX_EPOCH_JD: i64 = 2_440_588;
+    let cert_expires_at = (ac.fields.not_after.to_julian_day() as i64 - UNIX_EPOCH_JD) * 86400;
+
+    let (banks, payer, blockhash) = program_test().start().await;
+
+    banks
+        .process_transaction(Transaction::new_signed_with_payer(
+            &[ix_initialize(payer.pubkey(), [0u8; 32])],
+            Some(&payer.pubkey()),
+            &[&payer],
+            blockhash,
+        ))
+        .await
+        .unwrap();
+
+    let blockhash = banks.get_latest_blockhash().await.unwrap();
+    banks
+        .process_transaction(Transaction::new_signed_with_payer(
+            &[ix_add_issuer(
+                payer.pubkey(),
+                issuer_pubkey_hash,
+                CredentialType::Dne,
+                "TEST STUDENT ENTITY",
+            )],
+            Some(&payer.pubkey()),
+            &[&payer],
+            blockhash,
+        ))
+        .await
+        .unwrap();
+
+    let student = Keypair::new();
+    let blockhash = banks.get_latest_blockhash().await.unwrap();
+    banks
+        .process_transaction(Transaction::new_signed_with_payer(
+            &[system_instruction::transfer(
+                &payer.pubkey(),
+                &student.pubkey(),
+                1_000_000_000,
+            )],
+            Some(&payer.pubkey()),
+            &[&payer],
+            blockhash,
+        ))
+        .await
+        .unwrap();
+
+    let now = banks.get_sysvar::<Clock>().await.unwrap().unix_timestamp;
+    let pv_bytes = PublicValues {
+        is_valid_student: true,
+        is_not_expired: true,
+        issuer_pubkey_hash,
+        credential_type: 0,
+        cert_expires_at,
+        cert_nullifier,
+        proof_timestamp: now,
+    }
+    .try_to_vec()
+    .unwrap();
+
+    let blockhash = banks.get_latest_blockhash().await.unwrap();
+    banks
+        .process_transaction(Transaction::new_signed_with_payer(
+            &[ix_issue_credential(
+                student.pubkey(),
+                cert_nullifier,
+                issuer_pubkey_hash,
+                pv_bytes,
+            )],
+            Some(&student.pubkey()),
+            &[&student],
+            blockhash,
+        ))
+        .await
+        .unwrap();
+
+    let (cred_key, _) = credential_pda(&student.pubkey());
+    let raw = banks.get_account(cred_key).await.unwrap().unwrap();
+    let cred = StudentCredential::try_deserialize(&mut raw.data.as_ref()).unwrap();
+    assert_eq!(cred.wallet, student.pubkey());
+    assert_eq!(cred.cert_nullifier, cert_nullifier);
+    assert_eq!(cred.expires_at, cert_expires_at);
+    assert_eq!(cred.issuer_pubkey_hash, issuer_pubkey_hash);
+    assert_eq!(cred.credential_type, CredentialType::Dne);
 }

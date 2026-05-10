@@ -55,21 +55,31 @@ pub mod zk_student_protocol {
 
     pub fn issue_credential(
         ctx: Context<IssueCredential>,
-        // Groth16 proof bytes from the prover server (`proof.bytes()`).
-        // Wire sp1-solana verification here once it ships SP1 v6 VK bytes:
-        //
-        //   sp1_solana::verify_proof(
-        //       &proof_bytes,
-        //       &public_values_bytes,
-        //       &hex::encode(ctx.accounts.config.sp1_vkey_hash),
-        //       sp1_solana::GROTH16_VK_6_0_0_BYTES,
-        //   ).map_err(|_| ZkStudentError::InvalidProof)?;
         proof_bytes: Vec<u8>,
         public_values_bytes: Vec<u8>,
         cert_nullifier: [u8; 32],
         issuer_pubkey_hash: [u8; 32],
     ) -> Result<()> {
-        let _ = proof_bytes; // stubbed until sp1-solana v6 is available
+        #[cfg(feature = "verify-proof")]
+        {
+            let vkey_hex = {
+                let mut s = String::with_capacity(66);
+                s.push_str("0x");
+                for b in ctx.accounts.config.sp1_vkey_hash.iter() {
+                    s.push_str(&format!("{:02x}", b));
+                }
+                s
+            };
+            sp1_solana::verify_proof(
+                &proof_bytes,
+                &public_values_bytes,
+                &vkey_hex,
+                sp1_solana::GROTH16_VK_5_0_0_BYTES,
+            )
+            .map_err(|_| ZkStudentError::InvalidProof)?;
+        }
+        #[cfg(not(feature = "verify-proof"))]
+        let _ = proof_bytes;
         let pv = PublicValues::try_from_slice(&public_values_bytes)
             .map_err(|_| ZkStudentError::DeserializationError)?;
 
@@ -128,7 +138,26 @@ pub mod zk_student_protocol {
         cert_nullifier: [u8; 32],
         issuer_pubkey_hash: [u8; 32],
     ) -> Result<()> {
-        let _ = proof_bytes; // same stub as issue_credential
+        #[cfg(feature = "verify-proof")]
+        {
+            let vkey_hex = {
+                let mut s = String::with_capacity(66);
+                s.push_str("0x");
+                for b in ctx.accounts.config.sp1_vkey_hash.iter() {
+                    s.push_str(&format!("{:02x}", b));
+                }
+                s
+            };
+            sp1_solana::verify_proof(
+                &proof_bytes,
+                &public_values_bytes,
+                &vkey_hex,
+                sp1_solana::GROTH16_VK_5_0_0_BYTES,
+            )
+            .map_err(|_| ZkStudentError::InvalidProof)?;
+        }
+        #[cfg(not(feature = "verify-proof"))]
+        let _ = proof_bytes;
         let pv = PublicValues::try_from_slice(&public_values_bytes)
             .map_err(|_| ZkStudentError::DeserializationError)?;
 
@@ -278,7 +307,6 @@ pub struct IssueCredential<'info> {
     )]
     pub issuer: Account<'info, TrustedIssuer>,
 
-    /// Needed for sp1_vkey_hash once sp1-solana v6 verification is wired in.
     #[account(seeds = [b"config"], bump = config.bump)]
     pub config: Account<'info, ProtocolConfig>,
 
@@ -317,7 +345,6 @@ pub struct RenewCredential<'info> {
     )]
     pub issuer: Account<'info, TrustedIssuer>,
 
-    /// Needed for sp1_vkey_hash once sp1-solana v6 verification is wired in.
     #[account(seeds = [b"config"], bump = config.bump)]
     pub config: Account<'info, ProtocolConfig>,
 

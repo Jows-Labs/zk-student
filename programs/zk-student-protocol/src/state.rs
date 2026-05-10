@@ -50,7 +50,7 @@ impl CertNullifier {
     pub const SPACE: usize = 8 + 1;
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq, Debug)]
 #[repr(u8)]
 pub enum CredentialType {
     Dne = 0,
