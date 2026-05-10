@@ -45,7 +45,10 @@ pub mod zk_student_protocol {
         Ok(())
     }
 
-    pub fn transfer_authority(ctx: Context<TransferAuthority>, new_authority: Pubkey) -> Result<()> {
+    pub fn transfer_authority(
+        ctx: Context<TransferAuthority>,
+        new_authority: Pubkey,
+    ) -> Result<()> {
         ctx.accounts.config.authority = new_authority;
         Ok(())
     }
@@ -60,8 +63,14 @@ pub mod zk_student_protocol {
         let pv = PublicValues::try_from_slice(&public_values_bytes)
             .map_err(|_| ZkStudentError::DeserializationError)?;
 
-        require!(pv.cert_nullifier == cert_nullifier, ZkStudentError::NullifierMismatch);
-        require!(pv.issuer_pubkey_hash == issuer_pubkey_hash, ZkStudentError::IssuerMismatch);
+        require!(
+            pv.cert_nullifier == cert_nullifier,
+            ZkStudentError::NullifierMismatch
+        );
+        require!(
+            pv.issuer_pubkey_hash == issuer_pubkey_hash,
+            ZkStudentError::IssuerMismatch
+        );
         require!(
             pv.is_valid_student && pv.is_adult && pv.is_not_expired,
             ZkStudentError::InvalidPublicValues
@@ -104,8 +113,14 @@ pub mod zk_student_protocol {
         let pv = PublicValues::try_from_slice(&public_values_bytes)
             .map_err(|_| ZkStudentError::DeserializationError)?;
 
-        require!(pv.cert_nullifier == cert_nullifier, ZkStudentError::NullifierMismatch);
-        require!(pv.issuer_pubkey_hash == issuer_pubkey_hash, ZkStudentError::IssuerMismatch);
+        require!(
+            pv.cert_nullifier == cert_nullifier,
+            ZkStudentError::NullifierMismatch
+        );
+        require!(
+            pv.issuer_pubkey_hash == issuer_pubkey_hash,
+            ZkStudentError::IssuerMismatch
+        );
         require!(
             pv.is_valid_student && pv.is_adult && pv.is_not_expired,
             ZkStudentError::InvalidPublicValues

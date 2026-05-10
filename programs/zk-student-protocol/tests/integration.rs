@@ -167,7 +167,12 @@ async fn setup() -> (solana_program_test::BanksClient, Keypair, [u8; 32]) {
     let issuer_hash = [1u8; 32];
     let blockhash = banks.get_latest_blockhash().await.unwrap();
     let tx = Transaction::new_signed_with_payer(
-        &[ix_add_issuer(payer.pubkey(), issuer_hash, CredentialType::Dne, "DNE")],
+        &[ix_add_issuer(
+            payer.pubkey(),
+            issuer_hash,
+            CredentialType::Dne,
+            "DNE",
+        )],
         Some(&payer.pubkey()),
         &[&payer],
         blockhash,
@@ -215,7 +220,11 @@ async fn test_add_issuer_unauthorized() {
     let attacker = Keypair::new();
     let blockhash = banks.get_latest_blockhash().await.unwrap();
     let tx = Transaction::new_signed_with_payer(
-        &[system_instruction::transfer(&payer.pubkey(), &attacker.pubkey(), 1_000_000_000)],
+        &[system_instruction::transfer(
+            &payer.pubkey(),
+            &attacker.pubkey(),
+            1_000_000_000,
+        )],
         Some(&payer.pubkey()),
         &[&payer],
         blockhash,
@@ -225,7 +234,12 @@ async fn test_add_issuer_unauthorized() {
     let fake_hash = [2u8; 32];
     let blockhash = banks.get_latest_blockhash().await.unwrap();
     let tx = Transaction::new_signed_with_payer(
-        &[ix_add_issuer(attacker.pubkey(), fake_hash, CredentialType::Dne, "Fake")],
+        &[ix_add_issuer(
+            attacker.pubkey(),
+            fake_hash,
+            CredentialType::Dne,
+            "Fake",
+        )],
         Some(&attacker.pubkey()),
         &[&attacker],
         blockhash,
@@ -240,7 +254,11 @@ async fn test_issue_credential() {
     let student = Keypair::new();
     let blockhash = banks.get_latest_blockhash().await.unwrap();
     let tx = Transaction::new_signed_with_payer(
-        &[system_instruction::transfer(&payer.pubkey(), &student.pubkey(), 1_000_000_000)],
+        &[system_instruction::transfer(
+            &payer.pubkey(),
+            &student.pubkey(),
+            1_000_000_000,
+        )],
         Some(&payer.pubkey()),
         &[&payer],
         blockhash,
@@ -253,7 +271,12 @@ async fn test_issue_credential() {
 
     let blockhash = banks.get_latest_blockhash().await.unwrap();
     let tx = Transaction::new_signed_with_payer(
-        &[ix_issue_credential(student.pubkey(), cert_nullifier, issuer_hash, pv_bytes)],
+        &[ix_issue_credential(
+            student.pubkey(),
+            cert_nullifier,
+            issuer_hash,
+            pv_bytes,
+        )],
         Some(&student.pubkey()),
         &[&student],
         blockhash,
@@ -275,7 +298,11 @@ async fn test_nullifier_anti_replay() {
     let student = Keypair::new();
     let blockhash = banks.get_latest_blockhash().await.unwrap();
     let tx = Transaction::new_signed_with_payer(
-        &[system_instruction::transfer(&payer.pubkey(), &student.pubkey(), 2_000_000_000)],
+        &[system_instruction::transfer(
+            &payer.pubkey(),
+            &student.pubkey(),
+            2_000_000_000,
+        )],
         Some(&payer.pubkey()),
         &[&payer],
         blockhash,
@@ -287,7 +314,12 @@ async fn test_nullifier_anti_replay() {
 
     let blockhash = banks.get_latest_blockhash().await.unwrap();
     let tx = Transaction::new_signed_with_payer(
-        &[ix_issue_credential(student.pubkey(), cert_nullifier, issuer_hash, pv_bytes)],
+        &[ix_issue_credential(
+            student.pubkey(),
+            cert_nullifier,
+            issuer_hash,
+            pv_bytes,
+        )],
         Some(&student.pubkey()),
         &[&student],
         blockhash,
@@ -297,7 +329,11 @@ async fn test_nullifier_anti_replay() {
     let student2 = Keypair::new();
     let blockhash = banks.get_latest_blockhash().await.unwrap();
     let tx = Transaction::new_signed_with_payer(
-        &[system_instruction::transfer(&payer.pubkey(), &student2.pubkey(), 1_000_000_000)],
+        &[system_instruction::transfer(
+            &payer.pubkey(),
+            &student2.pubkey(),
+            1_000_000_000,
+        )],
         Some(&payer.pubkey()),
         &[&payer],
         blockhash,
@@ -307,7 +343,12 @@ async fn test_nullifier_anti_replay() {
     let pv_bytes2 = make_pv(issuer_hash, cert_nullifier, 9_999_999_999);
     let blockhash = banks.get_latest_blockhash().await.unwrap();
     let tx = Transaction::new_signed_with_payer(
-        &[ix_issue_credential(student2.pubkey(), cert_nullifier, issuer_hash, pv_bytes2)],
+        &[ix_issue_credential(
+            student2.pubkey(),
+            cert_nullifier,
+            issuer_hash,
+            pv_bytes2,
+        )],
         Some(&student2.pubkey()),
         &[&student2],
         blockhash,
