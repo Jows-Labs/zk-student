@@ -1,0 +1,14 @@
+[features]
+seeds = false
+skip-lint = false
+
+[programs.localnet]
+zk_student_protocol = "8GzzGmVbwTZ982GF7kpbchEf2VVv6wWXHZrmtj8dJJ4z"
+zk_meia = "HoK1YHdbfTQppTnquqAcGQ4v3DZczz7e7CnmDSm9v9FX"
+
+[provider]
+cluster = "localnet"
+wallet = "~/.config/solana/id.json"
+
+[workspace]
+members = ["programs/*"]
