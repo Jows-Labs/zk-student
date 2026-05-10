@@ -55,13 +55,31 @@ pub mod zk_student_protocol {
 
     pub fn issue_credential(
         ctx: Context<IssueCredential>,
-        _proof_bytes: Vec<u8>, // TODO: sp1-solana Groth16 verification
+        // Groth16 proof bytes from the prover server (`proof.bytes()`).
+        // Wire sp1-solana verification here once it ships SP1 v6 VK bytes:
+        //
+        //   sp1_solana::verify_proof(
+        //       &proof_bytes,
+        //       &public_values_bytes,
+        //       &hex::encode(ctx.accounts.config.sp1_vkey_hash),
+        //       sp1_solana::GROTH16_VK_6_0_0_BYTES,
+        //   ).map_err(|_| ZkStudentError::InvalidProof)?;
+        proof_bytes: Vec<u8>,
         public_values_bytes: Vec<u8>,
         cert_nullifier: [u8; 32],
         issuer_pubkey_hash: [u8; 32],
     ) -> Result<()> {
+        let _ = proof_bytes; // stubbed until sp1-solana v6 is available
         let pv = PublicValues::try_from_slice(&public_values_bytes)
             .map_err(|_| ZkStudentError::DeserializationError)?;
+
+        // Proof must have been generated within the last hour.
+        const MAX_PROOF_AGE_SECS: i64 = 3600;
+        let now = Clock::get()?.unix_timestamp;
+        require!(
+            pv.proof_timestamp <= now && pv.proof_timestamp > now - MAX_PROOF_AGE_SECS,
+            ZkStudentError::ProofTooOld
+        );
 
         require!(
             pv.cert_nullifier == cert_nullifier,
@@ -72,7 +90,7 @@ pub mod zk_student_protocol {
             ZkStudentError::IssuerMismatch
         );
         require!(
-            pv.is_valid_student && pv.is_adult && pv.is_not_expired,
+            pv.is_valid_student && pv.is_not_expired,
             ZkStudentError::InvalidPublicValues
         );
         require!(
@@ -105,13 +123,21 @@ pub mod zk_student_protocol {
 
     pub fn renew_credential(
         ctx: Context<RenewCredential>,
-        _proof_bytes: Vec<u8>, // TODO: sp1-solana Groth16 verification
+        proof_bytes: Vec<u8>,
         public_values_bytes: Vec<u8>,
         cert_nullifier: [u8; 32],
         issuer_pubkey_hash: [u8; 32],
     ) -> Result<()> {
+        let _ = proof_bytes; // same stub as issue_credential
         let pv = PublicValues::try_from_slice(&public_values_bytes)
             .map_err(|_| ZkStudentError::DeserializationError)?;
+
+        const MAX_PROOF_AGE_SECS: i64 = 3600;
+        let now = Clock::get()?.unix_timestamp;
+        require!(
+            pv.proof_timestamp <= now && pv.proof_timestamp > now - MAX_PROOF_AGE_SECS,
+            ZkStudentError::ProofTooOld
+        );
 
         require!(
             pv.cert_nullifier == cert_nullifier,
@@ -122,7 +148,7 @@ pub mod zk_student_protocol {
             ZkStudentError::IssuerMismatch
         );
         require!(
-            pv.is_valid_student && pv.is_adult && pv.is_not_expired,
+            pv.is_valid_student && pv.is_not_expired,
             ZkStudentError::InvalidPublicValues
         );
         require!(
@@ -252,6 +278,10 @@ pub struct IssueCredential<'info> {
     )]
     pub issuer: Account<'info, TrustedIssuer>,
 
+    /// Needed for sp1_vkey_hash once sp1-solana v6 verification is wired in.
+    #[account(seeds = [b"config"], bump = config.bump)]
+    pub config: Account<'info, ProtocolConfig>,
+
     #[account(mut)]
     pub wallet: Signer<'info>,
     pub system_program: Program<'info, System>,
@@ -286,6 +316,10 @@ pub struct RenewCredential<'info> {
         bump = issuer.bump,
     )]
     pub issuer: Account<'info, TrustedIssuer>,
+
+    /// Needed for sp1_vkey_hash once sp1-solana v6 verification is wired in.
+    #[account(seeds = [b"config"], bump = config.bump)]
+    pub config: Account<'info, ProtocolConfig>,
 
     #[account(mut)]
     pub wallet: Signer<'info>,

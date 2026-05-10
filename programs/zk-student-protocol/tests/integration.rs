@@ -9,6 +9,7 @@ use solana_sdk::{
     pubkey::Pubkey,
     signature::{Keypair, Signer},
     system_instruction, system_program,
+    sysvar::clock::Clock,
     transaction::Transaction,
 };
 use std::path::Path;
@@ -111,7 +112,7 @@ fn ix_remove_issuer(authority: Pubkey, issuer_hash: [u8; 32]) -> Instruction {
     }
 }
 
-fn ix_issue_credential(
+fn ix_renew_credential(
     wallet: Pubkey,
     cert_nullifier: [u8; 32],
     issuer_hash: [u8; 32],
@@ -120,8 +121,9 @@ fn ix_issue_credential(
     let (credential, _) = credential_pda(&wallet);
     let (null_pda, _) = nullifier_pda(&cert_nullifier);
     let (issuer, _) = issuer_pda(&issuer_hash);
-    let mut data = disc("issue_credential").to_vec();
-    data.extend_from_slice(&0u32.to_le_bytes()); // empty proof_bytes
+    let (config, _) = config_pda();
+    let mut data = disc("renew_credential").to_vec();
+    data.extend_from_slice(&0u32.to_le_bytes());
     data.extend_from_slice(&(pv_bytes.len() as u32).to_le_bytes());
     data.extend(&pv_bytes);
     data.extend_from_slice(&cert_nullifier);
@@ -132,6 +134,7 @@ fn ix_issue_credential(
             AccountMeta::new(credential, false),
             AccountMeta::new(null_pda, false),
             AccountMeta::new_readonly(issuer, false),
+            AccountMeta::new_readonly(config, false),
             AccountMeta::new(wallet, true),
             AccountMeta::new_readonly(system_program::ID, false),
         ],
@@ -139,15 +142,50 @@ fn ix_issue_credential(
     }
 }
 
-fn make_pv(issuer_hash: [u8; 32], cert_nullifier: [u8; 32], expires_at: i64) -> Vec<u8> {
+fn ix_issue_credential(
+    wallet: Pubkey,
+    cert_nullifier: [u8; 32],
+    issuer_hash: [u8; 32],
+    pv_bytes: Vec<u8>,
+) -> Instruction {
+    let (credential, _) = credential_pda(&wallet);
+    let (null_pda, _) = nullifier_pda(&cert_nullifier);
+    let (issuer, _) = issuer_pda(&issuer_hash);
+    let (config, _) = config_pda();
+    let mut data = disc("issue_credential").to_vec();
+    data.extend_from_slice(&0u32.to_le_bytes());
+    data.extend_from_slice(&(pv_bytes.len() as u32).to_le_bytes());
+    data.extend(&pv_bytes);
+    data.extend_from_slice(&cert_nullifier);
+    data.extend_from_slice(&issuer_hash);
+    Instruction {
+        program_id: PROG,
+        accounts: vec![
+            AccountMeta::new(credential, false),
+            AccountMeta::new(null_pda, false),
+            AccountMeta::new_readonly(issuer, false),
+            AccountMeta::new_readonly(config, false),
+            AccountMeta::new(wallet, true),
+            AccountMeta::new_readonly(system_program::ID, false),
+        ],
+        data,
+    }
+}
+
+fn make_pv(
+    issuer_hash: [u8; 32],
+    cert_nullifier: [u8; 32],
+    expires_at: i64,
+    proof_timestamp: i64,
+) -> Vec<u8> {
     PublicValues {
         is_valid_student: true,
-        is_adult: true,
         is_not_expired: true,
         issuer_pubkey_hash: issuer_hash,
         credential_type: 0,
         cert_expires_at: expires_at,
         cert_nullifier,
+        proof_timestamp,
     }
     .try_to_vec()
     .unwrap()
@@ -267,7 +305,8 @@ async fn test_issue_credential() {
 
     let cert_nullifier = [99u8; 32];
     let expires_at = 9_999_999_999i64;
-    let pv_bytes = make_pv(issuer_hash, cert_nullifier, expires_at);
+    let now = banks.get_sysvar::<Clock>().await.unwrap().unix_timestamp;
+    let pv_bytes = make_pv(issuer_hash, cert_nullifier, expires_at, now);
 
     let blockhash = banks.get_latest_blockhash().await.unwrap();
     let tx = Transaction::new_signed_with_payer(
@@ -310,7 +349,8 @@ async fn test_nullifier_anti_replay() {
     banks.process_transaction(tx).await.unwrap();
 
     let cert_nullifier = [77u8; 32];
-    let pv_bytes = make_pv(issuer_hash, cert_nullifier, 9_999_999_999);
+    let now = banks.get_sysvar::<Clock>().await.unwrap().unix_timestamp;
+    let pv_bytes = make_pv(issuer_hash, cert_nullifier, 9_999_999_999, now);
 
     let blockhash = banks.get_latest_blockhash().await.unwrap();
     let tx = Transaction::new_signed_with_payer(
@@ -340,7 +380,8 @@ async fn test_nullifier_anti_replay() {
     );
     banks.process_transaction(tx).await.unwrap();
 
-    let pv_bytes2 = make_pv(issuer_hash, cert_nullifier, 9_999_999_999);
+    let now2 = banks.get_sysvar::<Clock>().await.unwrap().unix_timestamp;
+    let pv_bytes2 = make_pv(issuer_hash, cert_nullifier, 9_999_999_999, now2);
     let blockhash = banks.get_latest_blockhash().await.unwrap();
     let tx = Transaction::new_signed_with_payer(
         &[ix_issue_credential(
@@ -373,4 +414,591 @@ async fn test_remove_issuer() {
     let raw = banks.get_account(issuer_key).await.unwrap().unwrap();
     let issuer = TrustedIssuer::try_deserialize(&mut raw.data.as_ref()).unwrap();
     assert!(!issuer.active);
+}
+
+#[tokio::test]
+async fn test_issue_rejects_invalid_student() {
+    let (banks, payer, issuer_hash) = setup().await;
+    let student = Keypair::new();
+    let blockhash = banks.get_latest_blockhash().await.unwrap();
+    banks
+        .process_transaction(Transaction::new_signed_with_payer(
+            &[system_instruction::transfer(
+                &payer.pubkey(),
+                &student.pubkey(),
+                1_000_000_000,
+            )],
+            Some(&payer.pubkey()),
+            &[&payer],
+            blockhash,
+        ))
+        .await
+        .unwrap();
+
+    let cert_nullifier = [10u8; 32];
+    let now = banks.get_sysvar::<Clock>().await.unwrap().unix_timestamp;
+    let pv = PublicValues {
+        is_valid_student: false,
+        is_not_expired: true,
+        issuer_pubkey_hash: issuer_hash,
+        credential_type: 0,
+        cert_expires_at: 9_999_999_999,
+        cert_nullifier,
+        proof_timestamp: now,
+    }
+    .try_to_vec()
+    .unwrap();
+
+    let blockhash = banks.get_latest_blockhash().await.unwrap();
+    assert!(banks
+        .process_transaction(Transaction::new_signed_with_payer(
+            &[ix_issue_credential(
+                student.pubkey(),
+                cert_nullifier,
+                issuer_hash,
+                pv
+            )],
+            Some(&student.pubkey()),
+            &[&student],
+            blockhash,
+        ))
+        .await
+        .is_err());
+}
+
+#[tokio::test]
+async fn test_issue_rejects_expired_cert() {
+    let (banks, payer, issuer_hash) = setup().await;
+    let student = Keypair::new();
+    let blockhash = banks.get_latest_blockhash().await.unwrap();
+    banks
+        .process_transaction(Transaction::new_signed_with_payer(
+            &[system_instruction::transfer(
+                &payer.pubkey(),
+                &student.pubkey(),
+                1_000_000_000,
+            )],
+            Some(&payer.pubkey()),
+            &[&payer],
+            blockhash,
+        ))
+        .await
+        .unwrap();
+
+    let cert_nullifier = [11u8; 32];
+    let now = banks.get_sysvar::<Clock>().await.unwrap().unix_timestamp;
+    let pv = PublicValues {
+        is_valid_student: true,
+        is_not_expired: true,
+        issuer_pubkey_hash: issuer_hash,
+        credential_type: 0,
+        cert_expires_at: now - 1,
+        cert_nullifier,
+        proof_timestamp: now,
+    }
+    .try_to_vec()
+    .unwrap();
+
+    let blockhash = banks.get_latest_blockhash().await.unwrap();
+    assert!(banks
+        .process_transaction(Transaction::new_signed_with_payer(
+            &[ix_issue_credential(
+                student.pubkey(),
+                cert_nullifier,
+                issuer_hash,
+                pv
+            )],
+            Some(&student.pubkey()),
+            &[&student],
+            blockhash,
+        ))
+        .await
+        .is_err());
+}
+
+#[tokio::test]
+async fn test_issue_rejects_stale_proof() {
+    let (banks, payer, issuer_hash) = setup().await;
+    let student = Keypair::new();
+    let blockhash = banks.get_latest_blockhash().await.unwrap();
+    banks
+        .process_transaction(Transaction::new_signed_with_payer(
+            &[system_instruction::transfer(
+                &payer.pubkey(),
+                &student.pubkey(),
+                1_000_000_000,
+            )],
+            Some(&payer.pubkey()),
+            &[&payer],
+            blockhash,
+        ))
+        .await
+        .unwrap();
+
+    let cert_nullifier = [12u8; 32];
+    let now = banks.get_sysvar::<Clock>().await.unwrap().unix_timestamp;
+    let pv = PublicValues {
+        is_valid_student: true,
+        is_not_expired: true,
+        issuer_pubkey_hash: issuer_hash,
+        credential_type: 0,
+        cert_expires_at: 9_999_999_999,
+        cert_nullifier,
+        proof_timestamp: now - 7201,
+    }
+    .try_to_vec()
+    .unwrap();
+
+    let blockhash = banks.get_latest_blockhash().await.unwrap();
+    assert!(banks
+        .process_transaction(Transaction::new_signed_with_payer(
+            &[ix_issue_credential(
+                student.pubkey(),
+                cert_nullifier,
+                issuer_hash,
+                pv
+            )],
+            Some(&student.pubkey()),
+            &[&student],
+            blockhash,
+        ))
+        .await
+        .is_err());
+}
+
+#[tokio::test]
+async fn test_issue_rejects_future_proof() {
+    let (banks, payer, issuer_hash) = setup().await;
+    let student = Keypair::new();
+    let blockhash = banks.get_latest_blockhash().await.unwrap();
+    banks
+        .process_transaction(Transaction::new_signed_with_payer(
+            &[system_instruction::transfer(
+                &payer.pubkey(),
+                &student.pubkey(),
+                1_000_000_000,
+            )],
+            Some(&payer.pubkey()),
+            &[&payer],
+            blockhash,
+        ))
+        .await
+        .unwrap();
+
+    let cert_nullifier = [13u8; 32];
+    let now = banks.get_sysvar::<Clock>().await.unwrap().unix_timestamp;
+    let pv = PublicValues {
+        is_valid_student: true,
+        is_not_expired: true,
+        issuer_pubkey_hash: issuer_hash,
+        credential_type: 0,
+        cert_expires_at: 9_999_999_999,
+        cert_nullifier,
+        proof_timestamp: now + 100,
+    }
+    .try_to_vec()
+    .unwrap();
+
+    let blockhash = banks.get_latest_blockhash().await.unwrap();
+    assert!(banks
+        .process_transaction(Transaction::new_signed_with_payer(
+            &[ix_issue_credential(
+                student.pubkey(),
+                cert_nullifier,
+                issuer_hash,
+                pv
+            )],
+            Some(&student.pubkey()),
+            &[&student],
+            blockhash,
+        ))
+        .await
+        .is_err());
+}
+
+#[tokio::test]
+async fn test_issue_rejects_nullifier_mismatch() {
+    let (banks, payer, issuer_hash) = setup().await;
+    let student = Keypair::new();
+    let blockhash = banks.get_latest_blockhash().await.unwrap();
+    banks
+        .process_transaction(Transaction::new_signed_with_payer(
+            &[system_instruction::transfer(
+                &payer.pubkey(),
+                &student.pubkey(),
+                1_000_000_000,
+            )],
+            Some(&payer.pubkey()),
+            &[&payer],
+            blockhash,
+        ))
+        .await
+        .unwrap();
+
+    let cert_nullifier = [14u8; 32];
+    let now = banks.get_sysvar::<Clock>().await.unwrap().unix_timestamp;
+    let pv = PublicValues {
+        is_valid_student: true,
+        is_not_expired: true,
+        issuer_pubkey_hash: issuer_hash,
+        credential_type: 0,
+        cert_expires_at: 9_999_999_999,
+        cert_nullifier: [15u8; 32],
+        proof_timestamp: now,
+    }
+    .try_to_vec()
+    .unwrap();
+
+    let blockhash = banks.get_latest_blockhash().await.unwrap();
+    assert!(banks
+        .process_transaction(Transaction::new_signed_with_payer(
+            &[ix_issue_credential(
+                student.pubkey(),
+                cert_nullifier,
+                issuer_hash,
+                pv
+            )],
+            Some(&student.pubkey()),
+            &[&student],
+            blockhash,
+        ))
+        .await
+        .is_err());
+}
+
+#[tokio::test]
+async fn test_issue_rejects_issuer_mismatch() {
+    let (banks, payer, issuer_hash) = setup().await;
+    let student = Keypair::new();
+    let blockhash = banks.get_latest_blockhash().await.unwrap();
+    banks
+        .process_transaction(Transaction::new_signed_with_payer(
+            &[system_instruction::transfer(
+                &payer.pubkey(),
+                &student.pubkey(),
+                1_000_000_000,
+            )],
+            Some(&payer.pubkey()),
+            &[&payer],
+            blockhash,
+        ))
+        .await
+        .unwrap();
+
+    let cert_nullifier = [16u8; 32];
+    let now = banks.get_sysvar::<Clock>().await.unwrap().unix_timestamp;
+    let pv = PublicValues {
+        is_valid_student: true,
+        is_not_expired: true,
+        issuer_pubkey_hash: [0xFFu8; 32],
+        credential_type: 0,
+        cert_expires_at: 9_999_999_999,
+        cert_nullifier,
+        proof_timestamp: now,
+    }
+    .try_to_vec()
+    .unwrap();
+
+    let blockhash = banks.get_latest_blockhash().await.unwrap();
+    assert!(banks
+        .process_transaction(Transaction::new_signed_with_payer(
+            &[ix_issue_credential(
+                student.pubkey(),
+                cert_nullifier,
+                issuer_hash,
+                pv
+            )],
+            Some(&student.pubkey()),
+            &[&student],
+            blockhash,
+        ))
+        .await
+        .is_err());
+}
+
+#[tokio::test]
+async fn test_issue_rejects_inactive_issuer() {
+    let (banks, payer, issuer_hash) = setup().await;
+
+    let blockhash = banks.get_latest_blockhash().await.unwrap();
+    banks
+        .process_transaction(Transaction::new_signed_with_payer(
+            &[ix_remove_issuer(payer.pubkey(), issuer_hash)],
+            Some(&payer.pubkey()),
+            &[&payer],
+            blockhash,
+        ))
+        .await
+        .unwrap();
+
+    let student = Keypair::new();
+    let blockhash = banks.get_latest_blockhash().await.unwrap();
+    banks
+        .process_transaction(Transaction::new_signed_with_payer(
+            &[system_instruction::transfer(
+                &payer.pubkey(),
+                &student.pubkey(),
+                1_000_000_000,
+            )],
+            Some(&payer.pubkey()),
+            &[&payer],
+            blockhash,
+        ))
+        .await
+        .unwrap();
+
+    let cert_nullifier = [17u8; 32];
+    let now = banks.get_sysvar::<Clock>().await.unwrap().unix_timestamp;
+    let pv_bytes = make_pv(issuer_hash, cert_nullifier, 9_999_999_999, now);
+
+    let blockhash = banks.get_latest_blockhash().await.unwrap();
+    assert!(banks
+        .process_transaction(Transaction::new_signed_with_payer(
+            &[ix_issue_credential(
+                student.pubkey(),
+                cert_nullifier,
+                issuer_hash,
+                pv_bytes
+            )],
+            Some(&student.pubkey()),
+            &[&student],
+            blockhash,
+        ))
+        .await
+        .is_err());
+}
+
+#[tokio::test]
+async fn test_issue_rejects_credential_type_mismatch() {
+    let (banks, payer, _) = setup().await;
+
+    let isic_hash = [3u8; 32];
+    let blockhash = banks.get_latest_blockhash().await.unwrap();
+    banks
+        .process_transaction(Transaction::new_signed_with_payer(
+            &[ix_add_issuer(
+                payer.pubkey(),
+                isic_hash,
+                CredentialType::Isic,
+                "ISIC",
+            )],
+            Some(&payer.pubkey()),
+            &[&payer],
+            blockhash,
+        ))
+        .await
+        .unwrap();
+
+    let student = Keypair::new();
+    let blockhash = banks.get_latest_blockhash().await.unwrap();
+    banks
+        .process_transaction(Transaction::new_signed_with_payer(
+            &[system_instruction::transfer(
+                &payer.pubkey(),
+                &student.pubkey(),
+                1_000_000_000,
+            )],
+            Some(&payer.pubkey()),
+            &[&payer],
+            blockhash,
+        ))
+        .await
+        .unwrap();
+
+    let cert_nullifier = [18u8; 32];
+    let now = banks.get_sysvar::<Clock>().await.unwrap().unix_timestamp;
+    let pv = PublicValues {
+        is_valid_student: true,
+        is_not_expired: true,
+        issuer_pubkey_hash: isic_hash,
+        credential_type: 0,
+        cert_expires_at: 9_999_999_999,
+        cert_nullifier,
+        proof_timestamp: now,
+    }
+    .try_to_vec()
+    .unwrap();
+
+    let blockhash = banks.get_latest_blockhash().await.unwrap();
+    assert!(banks
+        .process_transaction(Transaction::new_signed_with_payer(
+            &[ix_issue_credential(
+                student.pubkey(),
+                cert_nullifier,
+                isic_hash,
+                pv
+            )],
+            Some(&student.pubkey()),
+            &[&student],
+            blockhash,
+        ))
+        .await
+        .is_err());
+}
+
+async fn issue_for_student(
+    banks: &solana_program_test::BanksClient,
+    issuer_hash: [u8; 32],
+    student: &Keypair,
+    cert_nullifier: [u8; 32],
+) {
+    let now = banks.get_sysvar::<Clock>().await.unwrap().unix_timestamp;
+    let pv_bytes = make_pv(issuer_hash, cert_nullifier, 9_999_999_999, now);
+    let blockhash = banks.get_latest_blockhash().await.unwrap();
+    banks
+        .process_transaction(Transaction::new_signed_with_payer(
+            &[ix_issue_credential(
+                student.pubkey(),
+                cert_nullifier,
+                issuer_hash,
+                pv_bytes,
+            )],
+            Some(&student.pubkey()),
+            &[student],
+            blockhash,
+        ))
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn test_renew_credential() {
+    let (banks, payer, issuer_hash) = setup().await;
+    let student = Keypair::new();
+    let blockhash = banks.get_latest_blockhash().await.unwrap();
+    banks
+        .process_transaction(Transaction::new_signed_with_payer(
+            &[system_instruction::transfer(
+                &payer.pubkey(),
+                &student.pubkey(),
+                2_000_000_000,
+            )],
+            Some(&payer.pubkey()),
+            &[&payer],
+            blockhash,
+        ))
+        .await
+        .unwrap();
+
+    let first_nullifier = [20u8; 32];
+    issue_for_student(&banks, issuer_hash, &student, first_nullifier).await;
+
+    let new_nullifier = [21u8; 32];
+    let new_expires = 9_999_888_888i64;
+    let now = banks.get_sysvar::<Clock>().await.unwrap().unix_timestamp;
+    let pv_bytes = make_pv(issuer_hash, new_nullifier, new_expires, now);
+    let blockhash = banks.get_latest_blockhash().await.unwrap();
+    banks
+        .process_transaction(Transaction::new_signed_with_payer(
+            &[ix_renew_credential(
+                student.pubkey(),
+                new_nullifier,
+                issuer_hash,
+                pv_bytes,
+            )],
+            Some(&student.pubkey()),
+            &[&student],
+            blockhash,
+        ))
+        .await
+        .unwrap();
+
+    let (cred_key, _) = credential_pda(&student.pubkey());
+    let raw = banks.get_account(cred_key).await.unwrap().unwrap();
+    let cred = StudentCredential::try_deserialize(&mut raw.data.as_ref()).unwrap();
+    assert_eq!(cred.cert_nullifier, new_nullifier);
+    assert_eq!(cred.expires_at, new_expires);
+}
+
+#[tokio::test]
+async fn test_renew_rejects_same_nullifier() {
+    let (banks, payer, issuer_hash) = setup().await;
+    let student = Keypair::new();
+    let blockhash = banks.get_latest_blockhash().await.unwrap();
+    banks
+        .process_transaction(Transaction::new_signed_with_payer(
+            &[system_instruction::transfer(
+                &payer.pubkey(),
+                &student.pubkey(),
+                2_000_000_000,
+            )],
+            Some(&payer.pubkey()),
+            &[&payer],
+            blockhash,
+        ))
+        .await
+        .unwrap();
+
+    let cert_nullifier = [22u8; 32];
+    issue_for_student(&banks, issuer_hash, &student, cert_nullifier).await;
+
+    let now = banks.get_sysvar::<Clock>().await.unwrap().unix_timestamp;
+    let pv_bytes = make_pv(issuer_hash, cert_nullifier, 9_999_999_999, now);
+    let blockhash = banks.get_latest_blockhash().await.unwrap();
+    assert!(banks
+        .process_transaction(Transaction::new_signed_with_payer(
+            &[ix_renew_credential(
+                student.pubkey(),
+                cert_nullifier,
+                issuer_hash,
+                pv_bytes
+            )],
+            Some(&student.pubkey()),
+            &[&student],
+            blockhash,
+        ))
+        .await
+        .is_err());
+}
+
+#[tokio::test]
+async fn test_renew_rejects_stale_proof() {
+    let (banks, payer, issuer_hash) = setup().await;
+    let student = Keypair::new();
+    let blockhash = banks.get_latest_blockhash().await.unwrap();
+    banks
+        .process_transaction(Transaction::new_signed_with_payer(
+            &[system_instruction::transfer(
+                &payer.pubkey(),
+                &student.pubkey(),
+                2_000_000_000,
+            )],
+            Some(&payer.pubkey()),
+            &[&payer],
+            blockhash,
+        ))
+        .await
+        .unwrap();
+
+    issue_for_student(&banks, issuer_hash, &student, [23u8; 32]).await;
+
+    let new_nullifier = [24u8; 32];
+    let now = banks.get_sysvar::<Clock>().await.unwrap().unix_timestamp;
+    let pv = PublicValues {
+        is_valid_student: true,
+        is_not_expired: true,
+        issuer_pubkey_hash: issuer_hash,
+        credential_type: 0,
+        cert_expires_at: 9_999_999_999,
+        cert_nullifier: new_nullifier,
+        proof_timestamp: now - 7201,
+    }
+    .try_to_vec()
+    .unwrap();
+
+    let blockhash = banks.get_latest_blockhash().await.unwrap();
+    assert!(banks
+        .process_transaction(Transaction::new_signed_with_payer(
+            &[ix_renew_credential(
+                student.pubkey(),
+                new_nullifier,
+                issuer_hash,
+                pv
+            )],
+            Some(&student.pubkey()),
+            &[&student],
+            blockhash,
+        ))
+        .await
+        .is_err());
 }

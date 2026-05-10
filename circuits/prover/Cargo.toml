@@ -1,0 +1,29 @@
+[package]
+name = "zk-student-prover"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "server"
+path = "src/main.rs"
+
+[dependencies]
+sp1-sdk = { version = "6" }
+axum = "0.7"
+tokio = { version = "1", features = ["full"] }
+serde = { workspace = true }
+serde_json = "1"
+hex = "0.4"
+borsh = { workspace = true }
+sha2 = { workspace = true }
+# mock feature brings in rsa + rand + sha1 + std
+zk-student = { git = "https://github.com/Jows-Labs/zk-student-lib", features = ["mock"] }
+rsa = { version = "0.9" }
+tower-http = { version = "0.5", features = ["cors"] }
+anyhow = "1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+zk-student-types = { path = "../types" }
+
+[build-dependencies]
+sp1-build = "6"

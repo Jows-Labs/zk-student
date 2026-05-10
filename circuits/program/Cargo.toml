@@ -1,0 +1,18 @@
+[package]
+name = "zk-student-circuit"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "zk-student-circuit"
+path = "src/main.rs"
+
+[dependencies]
+sp1-zkvm = "6"
+borsh = { workspace = true }
+sha2 = { workspace = true }
+# pkcs1 for DecodeRsaPublicKey; sha1 comes transitively from zk-student's verify feature
+rsa = { version = "0.9", default-features = false }
+time = { version = "0.3", default-features = false }
+zk-student = { git = "https://github.com/Jows-Labs/zk-student-lib", default-features = false, features = ["verify"] }
+zk-student-types = { path = "../types" }
