@@ -17,11 +17,16 @@ import { PiHandCoinsBold } from "react-icons/pi";
 import { IoTicketOutline } from "react-icons/io5";
 import { ProtocolRewards } from "@/components/ProtocolRewards/ProtocolRewards";
 
+import { CreateZkProofPopup } from "@/components/CreateZkProofPopup/CreateZkProofPopup";
+import { useContentContext } from "@/lib/content-context";
+import { ZKStudentsSteps } from "@/components/ZKStudentsSteps/ZKStudentsSteps";
+
 const step = 3;
 
 const progress = ((step - 1) / (steps.length - 1)) * 100;
 
 export default function App() {
+  const { setCreateCertificateStep } = useContentContext();
   const rewards = [
     {
       icon: <PiHandCoinsBold className="w-full h-full" />,
@@ -47,11 +52,12 @@ export default function App() {
   ];
   return (
     <div className="flex flex-col items-center w-full h-screen relative bg-[#F8F9FA] z-10 text-black">
+      <CreateZkProofPopup />
       <NavBar />
-      <div className="w-full flex flex-col justify-start items-center overflow-y-auto">
+      <div className="w-full flex flex-col justify-start items-center overflow-y-auto overflow-x-hidden">
         <section className="w-fit grid flex-col items-center gap-16 px-10 py-12 relative">
           <div className="flex flex-col justify-start gap-4 w-full">
-            <h1 className="text-5xl font-bold">Welcome!</h1>
+            <h1 className="text-5xl font-semibold">Welcome!</h1>
             <p className="text-[#4C4355] text-lg">
               Your cryptographic identity is active on Solana. Begin your
               zero-knowledge<br></br>academic verification to unlock
@@ -69,7 +75,7 @@ export default function App() {
                       <LuShieldCheck className="text-xl" />
                       <p className="text-sm font-bold">PENDING VERIFICATION</p>
                     </div>
-                    <h3 className="text-3xl font-bold">
+                    <h3 className="text-3xl font-medium">
                       Verify Academic Standing
                     </h3>
                     <p className="text-[#4C4355] text-md">
@@ -83,6 +89,7 @@ export default function App() {
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     className="py-4 px-12 flex items-center gap-1 rounded-xl text-2xl bg-radial-[at_25%_25%] from-[#9945FF] to-[#14F195] to-75% cursor-pointer text-white w-fit"
+                    onClick={() => setCreateCertificateStep?.(1)}
                   >
                     <p className="text-nowrap">Begin Verification</p>
                     <IoMdArrowForward className="h-7 w-auto" />
@@ -92,11 +99,12 @@ export default function App() {
                   src={Figure}
                   alt="Neural Figure"
                   className="w-auto h-70 rounded-2xl border-4 border-white shadow-2xl"
+                  loading="eager"
                 />
               </div>
               <div className="flex flex-col gap-10 justify-center items-center py-10 px-10 bg-white/60 border border-white/20 backdrop-blur-sm rounded-3xl h-fit z-1">
                 <div className="w-full flex justify-between items-center gap-8">
-                  <p className="text-2xl">Identity Vault</p>
+                  <p className="text-2xl font-medium">Identity Vault</p>
                   <MdLockOutline className="text-2xl text-[#4C4355]" />
                 </div>
                 <div className="w-full border border-2 border-[#CEC2D8]/50 border-dashed px-10 py-14 flex flex-col gap-4 justify-center items-center rounded-lg">
@@ -110,12 +118,12 @@ export default function App() {
             </div>
             <div className="flex flex-col gap-8">
               <div className="flex flex-col gap-4 justify-start items-start p-6 border h-fit w-100 rounded-3xl bg-white/60 backdrop-blur-sm border-white/20">
-                <p className="text-md font-bold text-[#4C4355]">
+                <p className="text-md font-semibold text-[#4C4355]">
                   NETWORK STATUS
                 </p>
                 <div className="flex gap-2 items-center">
                   <span className="w-3 h-3 bg-[#006D40] shadow-lg shadow-[#006D40] rounded-full"></span>
-                  <p className="text-2xl">Mainnet Beta</p>
+                  <p className="text-2xl font-medium">Mainnet Beta</p>
                 </div>
               </div>
               <ProtocolRewards rewards={rewards} />
@@ -123,20 +131,7 @@ export default function App() {
           </div>
         </section>
         <section className="py-14 px-36">
-          <div className="grid grid-cols-5 grid-rows-2 gap-x-10 gap-y-6 relative items-start justify-items-center w-full max-w-7xl">
-            <div className="absolute inset-x-0 top-10 -translate-y-1/2 h-1 bg-[#CEC2D8]/30 overflow-hidden">
-              <div
-                className="h-full transition-[width] duration-500 ease-out bg-gradient-to-r from-[#7C3AED]/30 via-[#8B5CF6]/30 to-[#A78BFA]/30"
-                style={{ width: `${progress}%` }}
-              ></div>
-            </div>
-            {steps.map(({ Icon }, index) => (
-              <StepIcon key={Icon.name} Icon={Icon} active={index < step} />
-            ))}
-            {steps.map(({ title, description }) => (
-              <StepText key={title} title={title} description={description} />
-            ))}
-          </div>
+          <ZKStudentsSteps />
         </section>
         <PoweredBySolSection />
         <Footer />
