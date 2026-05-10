@@ -2,8 +2,10 @@
 
 import { useContentContext } from "@/lib/content-context";
 import { motion } from "motion/react";
+import { useRouter } from "next/navigation";
 
 export const NavBar = () => {
+  const router = useRouter();
   const { walletAddress, connectWallet, disconnectWallet } =
     useContentContext();
 
@@ -15,7 +17,10 @@ export const NavBar = () => {
       : addressText;
 
   return (
-    <nav className="w-full py-4 flex items-center justify-between px-8 bg-gradient-to-r from-white via-white/60 to-white drop-shadow-xl/2">
+    <nav
+      className="w-full py-4 flex items-center justify-between px-8 bg-gradient-to-r from-white via-white/60 to-white drop-shadow-xl/2 cursor-pointer"
+      onClick={() => router.push("/")}
+    >
       <h1 className="text-4xl font-bold text-[#7F20E4]">ZK Student</h1>
       <div className="flex items-center gap-6">
         {!walletAddress && (

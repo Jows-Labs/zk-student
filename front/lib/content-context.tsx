@@ -16,6 +16,8 @@ interface PhantomWallet {
     publicKey: { toString: () => string };
   }>;
   disconnect: () => Promise<void>;
+  on?: (event: string, handler: (...args: any[]) => void) => void;
+  off?: (event: string, handler: (...args: any[]) => void) => void;
 }
 
 interface SolanaWindow extends Window {
@@ -30,12 +32,16 @@ type ContentContextValue = {
   walletAddress: string | null;
   connectWallet: () => Promise<void>;
   disconnectWallet: () => Promise<void>;
+  createCertificateStep?: number;
+  setCreateCertificateStep?: (step: number) => void;
 };
 
 const ContentContext = createContext<ContentContextValue>({
   walletAddress: null,
   connectWallet: async () => {},
   disconnectWallet: async () => {},
+  createCertificateStep: 0,
+  setCreateCertificateStep: () => {},
 } as ContentContextValue);
 
 export function useContentContext() {
@@ -50,6 +56,7 @@ export function useContentContext() {
 
 export function ContextProvider({ children }: ContentContextProviderProps) {
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
+  const [createCertificateStep, setCreateCertificateStep] = useState(3);
 
   const connectWallet = async () => {
     const solana = (window as SolanaWindow).solana;
@@ -60,6 +67,10 @@ export function ContextProvider({ children }: ContentContextProviderProps) {
       }
 
       const response = await solana.connect();
+
+      try {
+        localStorage.setItem("phantom.connected", "true");
+      } catch (e) {}
 
       setWalletAddress(response.publicKey.toString());
     } catch (error) {
@@ -75,6 +86,10 @@ export function ContextProvider({ children }: ContentContextProviderProps) {
         return;
       }
       await solana.disconnect();
+      try {
+        localStorage.removeItem("phantom.connected");
+      } catch (e) {}
+
       setWalletAddress(null);
     } catch (error) {
       console.error("Error disconnecting wallet:", error);
@@ -91,14 +106,44 @@ export function ContextProvider({ children }: ContentContextProviderProps) {
           return;
         }
 
-        if (solana.isPhantom && solana.publicKey) {
-          setWalletAddress(solana.publicKey.toString());
-          return;
+        const handleConnect = () => {
+          setWalletAddress(solana.publicKey?.toString() ?? null);
+        };
+
+        const handleDisconnect = () => {
+          setWalletAddress(null);
+        };
+
+        solana.on?.("connect", handleConnect);
+        solana.on?.("disconnect", handleDisconnect);
+
+        const previouslyConnected = (() => {
+          try {
+            return localStorage.getItem("phantom.connected") === "true";
+          } catch (e) {
+            return false;
+          }
+        })();
+
+        if (previouslyConnected) {
+          try {
+            const resp = await solana.connect({ onlyIfTrusted: true });
+            if (resp?.publicKey) {
+              setWalletAddress(resp.publicKey.toString());
+            }
+          } catch (e) {}
+        } else {
+          if (solana.isPhantom && solana.publicKey) {
+            setWalletAddress(solana.publicKey.toString());
+          } else if (solana.isPhantom && solana.isConnected) {
+            setWalletAddress(solana.publicKey?.toString() ?? null);
+          }
         }
 
-        if (solana.isPhantom && solana.isConnected) {
-          setWalletAddress(solana.publicKey?.toString() ?? null);
-        }
+        return () => {
+          solana.off?.("connect", handleConnect);
+          solana.off?.("disconnect", handleDisconnect);
+        };
       } catch (error) {
         console.error("Error checking wallet connection:", error);
       }
@@ -109,7 +154,13 @@ export function ContextProvider({ children }: ContentContextProviderProps) {
 
   return (
     <ContentContext.Provider
-      value={{ walletAddress, connectWallet, disconnectWallet }}
+      value={{
+        walletAddress,
+        connectWallet,
+        disconnectWallet,
+        createCertificateStep,
+        setCreateCertificateStep,
+      }}
     >
       {children}
     </ContentContext.Provider>
