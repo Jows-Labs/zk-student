@@ -25,7 +25,10 @@ export const NavBar = () => {
 
   return (
     <nav className="w-full flex items-center justify-between px-8 bg-gradient-to-r from-white via-white/60 to-white drop-shadow-xl/2">
-      <div className="flex items-center gap-4" onClick={() => router.push("/")}>
+      <div
+        className="flex items-center gap-4 cursor-pointer"
+        onClick={() => router.push("/")}
+      >
         <Image
           src={ZKSLogo}
           alt="ZK Student Logo"

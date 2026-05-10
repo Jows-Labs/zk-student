@@ -5,14 +5,11 @@ import { motion } from "motion/react";
 import { IoMdArrowForward } from "react-icons/io";
 import { LuGraduationCap, LuShieldCheck } from "react-icons/lu";
 import Image from "next/image";
-import Figure from "@/public/images/Figure.png";
 import { MdLockOutline } from "react-icons/md";
-import { StepIcon } from "@/components/Step/StepIcon";
-import { StepText } from "@/components/Step/StepText";
 import { steps } from "@/lib/steps";
 import { Footer } from "@/components/Footer/Footer";
 import { PoweredBySolSection } from "@/components/PoweredBySolanaSection/PoweredBySolSection";
-import { FaRegClipboard } from "react-icons/fa";
+import { FaRegClipboard, FaRust } from "react-icons/fa";
 import { PiHandCoinsBold } from "react-icons/pi";
 import { IoTicketOutline } from "react-icons/io5";
 import { ProtocolRewards } from "@/components/ProtocolRewards/ProtocolRewards";
@@ -20,13 +17,17 @@ import { ProtocolRewards } from "@/components/ProtocolRewards/ProtocolRewards";
 import { CreateZkProofPopup } from "@/components/CreateZkProofPopup/CreateZkProofPopup";
 import { useContentContext } from "@/lib/content-context";
 import { ZKStudentsSteps } from "@/components/ZKStudentsSteps/ZKStudentsSteps";
+import SnsLogo from "@/public/images/sns.png";
+import SolanaIcon from "@/public/images/solana.png";
+import { SiNextdotjs } from "react-icons/si";
+import ZKSGIcon from "@/public/images/logogradient.png";
+import Succint from "@/public/images/succint.svg";
 
 const step = 3;
 
-const progress = ((step - 1) / (steps.length - 1)) * 100;
-
 export default function App() {
   const { setCreateCertificateStep } = useContentContext();
+
   const rewards = [
     {
       icon: <PiHandCoinsBold className="w-full h-full" />,
@@ -69,7 +70,7 @@ export default function App() {
             <div className="rounded-4xl w-120 h-120 bg-[#0080A9] opacity-20 absolute -right-20 top-3/5 transform -translate-y-1/2 blur-3xl z-0"></div>
             <div className="flex flex-col gap-6 w-full z-1">
               <div className="flex gap-10 justify-center items-center py-12 px-10 bg-white/80 border-white/30 backdrop-blur-sm rounded-3xl min-w-180 h-fit z-1">
-                <div className="flex flex-col gap-12 justify-between w-full min-h-full">
+                <div className="flex flex-col gap-12 justify-between min-h-full">
                   <div className="flex flex-col gap-4 justify-start">
                     <div className="flex gap-2 items-center text-[#7F20E4] bg-[#7F20E4]/10 rounded-full py-2 px-6 w-fit">
                       <LuShieldCheck className="text-xl" />
@@ -95,7 +96,91 @@ export default function App() {
                     <IoMdArrowForward className="h-7 w-auto" />
                   </motion.div>
                 </div>
-                <div className="aspect-square min-h-70 rounded-2xl border-4 border-white shadow-2xl bg-radial from-white from 40% to-[#a79eb8]" />
+                <div className="aspect-square w-80 rounded-2xl border-4 border-white shadow-2xl bg-radial from-white from 40% to-[#a79eb8] flex items-center justify-center">
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{
+                      duration: 8,
+                      ease: "linear",
+                      repeat: Infinity,
+                    }}
+                    className="border border-black/10 w-8/10 aspect-square rounded-full drop-shadow-lg relative flex items-center justify-center p-14"
+                    style={{
+                      filter: "drop-shadow(0 0 5px rgba(127, 32, 228, 0.5))",
+                    }}
+                  >
+                    <motion.div
+                      animate={{ rotate: -360 }}
+                      transition={{
+                        duration: 8,
+                        ease: "linear",
+                        repeat: Infinity,
+                      }}
+                      className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2"
+                    >
+                      <FaRust className="w-10 h-fit rounded-xl text-[#f74b00]" />
+                    </motion.div>
+                    <motion.div
+                      animate={{ rotate: -360 }}
+                      transition={{
+                        duration: 8,
+                        ease: "linear",
+                        repeat: Infinity,
+                      }}
+                      className="absolute right-0 top-1/2 translate-x-1/2 -translate-y-1/2"
+                    >
+                      <Image
+                        src={SnsLogo}
+                        alt="SNS Logo"
+                        className="w-10 h-fit rounded-xl"
+                      />
+                    </motion.div>
+                    <motion.div
+                      animate={{ rotate: -360 }}
+                      transition={{
+                        duration: 8,
+                        ease: "linear",
+                        repeat: Infinity,
+                      }}
+                      className="absolute left-1/2 bottom-0 -translate-x-1/2 translate-y-1/2"
+                    >
+                      <Image
+                        src={SolanaIcon}
+                        alt="SNS Logo"
+                        className="w-10 h-fit rounded-xl"
+                      />
+                    </motion.div>
+                    <motion.div
+                      animate={{ rotate: -360 }}
+                      transition={{
+                        duration: 8,
+                        ease: "linear",
+                        repeat: Infinity,
+                      }}
+                      className="absolute left-0 top-1/2 -translate-x-1/2 -translate-y-1/2"
+                    >
+                      <Image
+                        src={Succint}
+                        alt="Succint"
+                        className="w-8 h-fit rounded-xl"
+                      />
+                    </motion.div>
+                    <motion.div
+                      animate={{ rotate: -360 }}
+                      transition={{
+                        duration: 8,
+                        ease: "linear",
+                        repeat: Infinity,
+                      }}
+                    >
+                      <Image
+                        src={ZKSGIcon}
+                        alt="ZKS Icon"
+                        className="w-full h-fit rounded-xl"
+                      />
+                    </motion.div>
+                  </motion.div>
+                </div>
               </div>
               <div className="flex flex-col gap-10 justify-center items-center py-10 px-10 bg-white/60 border border-white/20 backdrop-blur-sm rounded-3xl h-fit z-1">
                 <div className="w-full flex justify-between items-center gap-8">
