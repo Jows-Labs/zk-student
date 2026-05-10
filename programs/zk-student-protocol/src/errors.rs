@@ -22,4 +22,8 @@ pub enum ZkStudentError {
     NameTooLong,
     #[msg("Certificate has already expired")]
     CertificateExpired,
+    #[msg("Groth16 proof verification failed")]
+    InvalidProof,
+    #[msg("Proof timestamp is too old or in the future")]
+    ProofTooOld,
 }

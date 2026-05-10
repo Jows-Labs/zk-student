@@ -1,0 +1,8 @@
+[package]
+name = "zk-student-types"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+borsh = { workspace = true }
+serde = { workspace = true }

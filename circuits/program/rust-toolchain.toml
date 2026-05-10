@@ -1,0 +1,3 @@
+[toolchain]
+channel = "succinct"
+targets = ["riscv64im-succinct-zkvm-elf"]

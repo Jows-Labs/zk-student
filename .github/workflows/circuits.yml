@@ -1,0 +1,71 @@
+name: Circuits
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "circuits/**"
+      - ".github/workflows/circuits.yml"
+  pull_request:
+    paths:
+      - "circuits/**"
+      - ".github/workflows/circuits.yml"
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: circuits
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: circuits
+
+      - name: Install protobuf
+        run: sudo apt-get update && sudo apt-get install -y protobuf-compiler libprotobuf-dev
+
+      - name: fmt
+        run: cargo fmt --all -- --check
+
+      # circuits/program requires the Succinct toolchain and riscv32im target — skipped.
+      - name: clippy
+        env:
+          PROTOC_INCLUDE: /usr/include
+          SP1_BUILD_SKIP: "true"
+        run: cargo clippy --workspace --exclude zk-student-circuit --lib --bins -- -D warnings
+
+  check:
+    name: Check
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: circuits
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: circuits
+
+      - name: Install protobuf
+        run: sudo apt-get update && sudo apt-get install -y protobuf-compiler libprotobuf-dev
+
+      # circuits/program requires the Succinct toolchain and riscv32im target — skipped.
+      - name: cargo check
+        env:
+          PROTOC_INCLUDE: /usr/include
+          SP1_BUILD_SKIP: "true"
+        run: cargo check --workspace --exclude zk-student-circuit
