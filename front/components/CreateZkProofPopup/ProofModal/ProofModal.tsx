@@ -16,14 +16,22 @@ export const ProofModal = ({ isOpen }: { isOpen: boolean }) => {
             <p className="text-lg font-bold">ZK-VERIFIED</p>
           </div>
         </div>
-        <div className="flex gap-8">
+        <div className="grid grid-cols-2 grid-rows-2 gap-x-12 gap-y-6">
+          <div className="flex flex-col">
+            <p className="font-bold text-sm text-[#4C4355]">ISSUER</p>
+            <p className="text-2xl font-medium">Organization</p>
+          </div>
+          <div className="flex flex-col">
+            <p className="font-bold text-sm text-[#4C4355]">BIRTH DATE</p>
+            <p className="text-lg">01/01/2000</p>
+          </div>
           <div className="flex flex-col">
             <p className="font-bold text-sm text-[#4C4355]">ISSUED ON</p>
-            <p className="text-lg">January 1, 2023</p>
+            <p className="text-lg">01/01/2026</p>
           </div>
           <div className="flex flex-col">
             <p className="font-bold text-sm text-[#4C4355]">VALID UNTIL</p>
-            <p className="text-lg">January 1, 2024</p>
+            <p className="text-lg">01/01/2027</p>
           </div>
         </div>
       </div>

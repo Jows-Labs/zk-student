@@ -7,6 +7,8 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { getSNSPrimaryDomain } from "./sns";
+import type { Address } from "@solana/kit";
 
 interface PhantomWallet {
   isPhantom: boolean;
@@ -34,6 +36,8 @@ type ContentContextValue = {
   disconnectWallet: () => Promise<void>;
   createCertificateStep?: number;
   setCreateCertificateStep?: (step: number) => void;
+  primaryDomain?: string | null;
+  getSNSPrimaryDomain?: (address: string) => Promise<string | null>;
 };
 
 const ContentContext = createContext<ContentContextValue>({
@@ -42,6 +46,8 @@ const ContentContext = createContext<ContentContextValue>({
   disconnectWallet: async () => {},
   createCertificateStep: 0,
   setCreateCertificateStep: () => {},
+  primaryDomain: null,
+  getSNSPrimaryDomain: async () => null,
 } as ContentContextValue);
 
 export function useContentContext() {
@@ -57,6 +63,21 @@ export function useContentContext() {
 export function ContextProvider({ children }: ContentContextProviderProps) {
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [createCertificateStep, setCreateCertificateStep] = useState(3);
+  const [primaryDomain, setPrimaryDomain] = useState<string | null>(null);
+
+  const fetchPrimaryDomain = async (address: string) => {
+    try {
+      const domain = await getSNSPrimaryDomain(
+        "85mzQzu2DZ1yzbTm9d3F9wUenoFyn2HqdD1mviK2UKPZ" as Address,
+      );
+      const domainName = domain?.domain ?? null;
+      setPrimaryDomain(domainName);
+      return domainName;
+    } catch (error) {
+      console.warn("Erro ao buscar domínio SNS:", error);
+      return null;
+    }
+  };
 
   const connectWallet = async () => {
     const solana = (window as SolanaWindow).solana;
@@ -95,6 +116,14 @@ export function ContextProvider({ children }: ContentContextProviderProps) {
       console.error("Error disconnecting wallet:", error);
     }
   };
+
+  useEffect(() => {
+    if (walletAddress) {
+      void fetchPrimaryDomain(walletAddress);
+    } else {
+      setPrimaryDomain(null);
+    }
+  }, [walletAddress]);
 
   useEffect(() => {
     const checkIfWalletIsConnected = async () => {
@@ -160,6 +189,8 @@ export function ContextProvider({ children }: ContentContextProviderProps) {
         disconnectWallet,
         createCertificateStep,
         setCreateCertificateStep,
+        primaryDomain,
+        getSNSPrimaryDomain: fetchPrimaryDomain,
       }}
     >
       {children}

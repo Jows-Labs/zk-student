@@ -1,7 +1,10 @@
-import type { NextConfig } from "next";
+const nextConfig: any = {};
 
-const nextConfig: NextConfig = {
-  /* config options here */
-};
+if (process.env.NEXT_USE_WEBPACK === "1") {
+  nextConfig.webpack = (config: { experiments: any }) => {
+    config.experiments = { ...config.experiments, asyncWebAssembly: true };
+    return config;
+  };
+}
 
 export default nextConfig;

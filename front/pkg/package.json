@@ -1,0 +1,22 @@
+{
+  "name": "zk-student-wasm",
+  "type": "module",
+  "version": "0.1.0",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pedrocoelho/zk-student-lib"
+  },
+  "files": [
+    "zk_student_wasm_bg.wasm",
+    "zk_student_wasm.js",
+    "zk_student_wasm_bg.js",
+    "zk_student_wasm.d.ts"
+  ],
+  "main": "zk_student_wasm.js",
+  "types": "zk_student_wasm.d.ts",
+  "sideEffects": [
+    "./zk_student_wasm.js",
+    "./snippets/*"
+  ]
+}

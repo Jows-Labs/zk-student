@@ -4,6 +4,35 @@ import { useRef, type ChangeEvent } from "react";
 import { FaFileInvoice } from "react-icons/fa";
 import { IoFingerPrint } from "react-icons/io5";
 import { MdOutlineShield } from "react-icons/md";
+import { parse_cert, verify_cert } from "zk-student-wasm";
+
+const ISSUER_PUBKEY_DER = Uint8Array.from(
+  atob(
+    "MIIBCgKCAQEAxhjzPuiVgdtixl8xR5a657fiQ4WZXJChsoglEZqL96ovP+lo7Fix" +
+      "EmyNLR3LfNA7mbCcFrYfi9arI5iShV9vSA8xvvdeqWXvUDT1CNCoOkbH8wpfNTwr" +
+      "OijKhszPvj2fqLdJji2VrRJf7Vilj8yQ5KtweTAW4+BcLy5WkOa73lxbIPyzhlOJ" +
+      "4Lwbl18uW7tlWBaQonySO4HDDFL3SO9NVFvxebD9g13kpw5M7PCgPQje02ebcgTi" +
+      "88ZLlOhDdYYKkyGbVKK2kUMd9RTE4kn4r3suWmaxoCd0+17wJYYxrOflZ2dL+WRH" +
+      "G7CMa4pYKEWxpLXo4bDsjcr4Frh+Y7//DQIDAQAB",
+  ),
+  (character) => character.charCodeAt(0),
+);
+
+const pemToDer = (pem: string) => {
+  const base64 = pem
+    .replace(/-----BEGIN [^-]+-----/g, "")
+    .replace(/-----END [^-]+-----/g, "")
+    .replace(/\s+/g, "");
+
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+
+  return bytes;
+};
 
 export const UploadPemModal = ({ isOpen }: { isOpen: boolean }) => {
   const { setCreateCertificateStep } = useContentContext();
@@ -11,7 +40,7 @@ export const UploadPemModal = ({ isOpen }: { isOpen: boolean }) => {
 
   const handleSelectClick = () => inputRef.current?.click();
 
-  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (!file.name.toLowerCase().endsWith(".pem")) {
@@ -19,7 +48,19 @@ export const UploadPemModal = ({ isOpen }: { isOpen: boolean }) => {
       e.target.value = "";
       return;
     }
-    setCreateCertificateStep?.(2);
+
+    try {
+      const pem = await file.text();
+      const bytes = pemToDer(pem);
+      const fields = parse_cert(bytes);
+
+      verify_cert(bytes, ISSUER_PUBKEY_DER);
+      console.log("Parsed certificate fields:", fields);
+      setCreateCertificateStep?.(2);
+    } catch (error) {
+      e.target.value = "";
+      console.error("Error parsing certificate:", error);
+    }
   };
   return isOpen ? (
     <div className="bg-white/90 border border-white/20 rounded-3xl p-6 flex items-center justify-center relative">
