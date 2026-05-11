@@ -15,18 +15,29 @@ fn main() {
     // not support that flag, so we avoid the sp1-build subprocess when the ELF is already fresh.
     let manifest = std::env::var("CARGO_MANIFEST_DIR").unwrap();
     let workspace = std::path::Path::new(&manifest).parent().unwrap();
-    let elf = workspace.join(
-        "target/elf-compilation/riscv32im-succinct-zkvm-elf/release/zk-student-circuit",
-    );
+    let elf = workspace
+        .join("target/elf-compilation/riscv32im-succinct-zkvm-elf/release/zk-student-circuit");
 
     if elf.exists() {
-        println!("cargo:rustc-env=SP1_ELF_zk-student-circuit={}", elf.display());
+        println!(
+            "cargo:rustc-env=SP1_ELF_zk-student-circuit={}",
+            elf.display()
+        );
         // Rerun when the ELF itself changes (i.e. after the next `cargo prove build`) or
         // when circuit source / deps change so we know a rebuild is needed.
         println!("cargo:rerun-if-changed={}", elf.display());
-        println!("cargo:rerun-if-changed={}", workspace.join("program/src").display());
-        println!("cargo:rerun-if-changed={}", workspace.join("program/Cargo.toml").display());
-        println!("cargo:rerun-if-changed={}", workspace.join("types").display());
+        println!(
+            "cargo:rerun-if-changed={}",
+            workspace.join("program/src").display()
+        );
+        println!(
+            "cargo:rerun-if-changed={}",
+            workspace.join("program/Cargo.toml").display()
+        );
+        println!(
+            "cargo:rerun-if-changed={}",
+            workspace.join("types").display()
+        );
         return;
     }
 

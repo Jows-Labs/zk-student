@@ -85,7 +85,10 @@ mod tests {
             .expect("make_mock_witness");
         let pv = execute(witness).await.expect("execute");
         assert!(pv.is_valid_student, "RSA-SHA1 signature must verify");
-        assert!(pv.is_not_expired, "cert must not be expired at test timestamp");
+        assert!(
+            pv.is_not_expired,
+            "cert must not be expired at test timestamp"
+        );
         assert_eq!(pv.credential_type, 0);
         assert_ne!(pv.cert_nullifier, [0u8; 32]);
     }
