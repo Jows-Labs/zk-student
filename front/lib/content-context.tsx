@@ -9,6 +9,7 @@ import {
 } from "react";
 import { getSNSPrimaryDomain } from "./sns";
 import type { Address } from "@solana/kit";
+import { ISSUER_PUBKEY_DER } from "./issuerPubkeyDer";
 
 interface PhantomWallet {
   isPhantom: boolean;
@@ -38,6 +39,9 @@ type ContentContextValue = {
   setCreateCertificateStep?: (step: number) => void;
   primaryDomain?: string | null;
   getSNSPrimaryDomain?: (address: string) => Promise<string | null>;
+  fetchProverApiZkProccess?: (params: {
+    cert_der_hex: string;
+  }) => Promise<void>;
 };
 
 const ContentContext = createContext<ContentContextValue>({
@@ -48,6 +52,7 @@ const ContentContext = createContext<ContentContextValue>({
   setCreateCertificateStep: () => {},
   primaryDomain: null,
   getSNSPrimaryDomain: async () => null,
+  fetchProverApiZkProccess: async () => {},
 } as ContentContextValue);
 
 export function useContentContext() {
@@ -181,6 +186,56 @@ export function ContextProvider({ children }: ContentContextProviderProps) {
     void checkIfWalletIsConnected();
   }, []);
 
+  const fetchProverApiZkProccess = async ({
+    cert_der_hex,
+  }: {
+    cert_der_hex: string;
+  }) => {
+    try {
+      const proverApiUrl =
+        process.env.NEXT_PUBLIC_PROVER_API_URL || "http://localhost:3001";
+
+      const executeRes = await fetch(`${proverApiUrl}/execute`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          cert_der_hex,
+          issuer_pubkey_hex: ISSUER_PUBKEY_DER,
+          credential_type: 0,
+          current_timestamp: Math.floor(Date.now() / 1000),
+        }),
+      });
+
+      if (executeRes.ok) {
+        try {
+          const result = await fetch(`${proverApiUrl}/prove`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              cert_der_hex,
+              issuer_pubkey_hex: ISSUER_PUBKEY_DER,
+              credential_type: 0,
+              current_timestamp: Math.floor(Date.now() / 1000),
+            }),
+          });
+          const data = await result.json();
+          console.log("ZK Process Result:", data);
+        } catch (error) {
+          console.error("Error fetching ZK process result:", error);
+        }
+      } else {
+        console.error("Error executing ZK process:", executeRes.statusText);
+      }
+    } catch (error) {
+      console.error("Error fetching ZK process:", error);
+      throw error;
+    }
+  };
+
   return (
     <ContentContext.Provider
       value={{
@@ -191,6 +246,7 @@ export function ContextProvider({ children }: ContentContextProviderProps) {
         setCreateCertificateStep,
         primaryDomain,
         getSNSPrimaryDomain: fetchPrimaryDomain,
+        fetchProverApiZkProccess: fetchProverApiZkProccess,
       }}
     >
       {children}

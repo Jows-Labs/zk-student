@@ -1,8 +1,6 @@
-import { useContentContext } from "@/lib/content-context";
 import { motion } from "motion/react";
 import { useState } from "react";
 import { FaCheckCircle, FaShieldAlt } from "react-icons/fa";
-import { IoMdClose } from "react-icons/io";
 
 export const GenProofModal = ({ isOpen }: { isOpen: boolean }) => {
   const [currentStep, setCurrentStep] = useState(2);
@@ -50,8 +48,8 @@ export const GenProofModal = ({ isOpen }: { isOpen: boolean }) => {
 
   const List = [
     "AUTHENTICATING WALLET",
+    "EVALUATING .PEM CERTIFICATE",
     "CREATING ZERO-KNOWLEDGE PROOF",
-    "ANCHORING TO SOLANA MAINNET",
   ];
 
   return isOpen ? (
