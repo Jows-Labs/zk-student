@@ -2,8 +2,13 @@ import { motion } from "motion/react";
 import { useState } from "react";
 import { FaCheckCircle, FaShieldAlt } from "react-icons/fa";
 
-export const GenProofModal = ({ isOpen }: { isOpen: boolean }) => {
-  const [currentStep, setCurrentStep] = useState(2);
+export const GenProofModal = ({
+  isOpen,
+  currentStep,
+}: {
+  isOpen: boolean;
+  currentStep: number;
+}) => {
   const dotVariants = {
     pulse: {
       scale: [1, 1.4, 1],

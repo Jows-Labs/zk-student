@@ -27,6 +27,16 @@ interface SolanaWindow extends Window {
   solana?: PhantomWallet;
 }
 
+export interface ProverResponse {
+  is_valid_student: boolean;
+  is_not_expired: boolean;
+  issuer_pubkey_hash: string;
+  credential_type: number;
+  cert_expires_at: number;
+  cert_nullifier: string;
+  proof_timestamp: number;
+}
+
 type ContentContextProviderProps = {
   children: ReactNode;
 };
@@ -41,7 +51,7 @@ type ContentContextValue = {
   getSNSPrimaryDomain?: (address: string) => Promise<string | null>;
   fetchProverApiZkProccess?: (params: {
     cert_der_hex: string;
-  }) => Promise<void>;
+  }) => Promise<ProverResponse>;
 };
 
 const ContentContext = createContext<ContentContextValue>({
@@ -52,7 +62,15 @@ const ContentContext = createContext<ContentContextValue>({
   setCreateCertificateStep: () => {},
   primaryDomain: null,
   getSNSPrimaryDomain: async () => null,
-  fetchProverApiZkProccess: async () => {},
+  fetchProverApiZkProccess: async () => ({
+    is_valid_student: false,
+    is_not_expired: false,
+    issuer_pubkey_hash: "",
+    credential_type: 0,
+    cert_expires_at: 0,
+    cert_nullifier: "",
+    proof_timestamp: 0,
+  }),
 } as ContentContextValue);
 
 export function useContentContext() {
@@ -190,7 +208,7 @@ export function ContextProvider({ children }: ContentContextProviderProps) {
     cert_der_hex,
   }: {
     cert_der_hex: string;
-  }) => {
+  }): Promise<ProverResponse> => {
     try {
       const proverApiUrl =
         process.env.NEXT_PUBLIC_PROVER_API_URL || "http://localhost:3001";
@@ -202,34 +220,14 @@ export function ContextProvider({ children }: ContentContextProviderProps) {
         },
         body: JSON.stringify({
           cert_der_hex,
-          issuer_pubkey_hex: ISSUER_PUBKEY_DER,
+          issuer_pubkey_hex: Buffer.from(ISSUER_PUBKEY_DER).toString("hex"),
           credential_type: 0,
           current_timestamp: Math.floor(Date.now() / 1000),
         }),
       });
+      const data: ProverResponse = await executeRes.json();
 
-      if (executeRes.ok) {
-        try {
-          const result = await fetch(`${proverApiUrl}/prove`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              cert_der_hex,
-              issuer_pubkey_hex: ISSUER_PUBKEY_DER,
-              credential_type: 0,
-              current_timestamp: Math.floor(Date.now() / 1000),
-            }),
-          });
-          const data = await result.json();
-          console.log("ZK Process Result:", data);
-        } catch (error) {
-          console.error("Error fetching ZK process result:", error);
-        }
-      } else {
-        console.error("Error executing ZK process:", executeRes.statusText);
-      }
+      return data;
     } catch (error) {
       console.error("Error fetching ZK process:", error);
       throw error;

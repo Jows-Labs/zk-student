@@ -1,12 +1,13 @@
 import { useState, useRef, type ChangeEvent } from "react";
 import { UploadPemModal } from "./UploadPemModal/UploadPemModal";
 import { GenProofModal } from "./GeneratingProofModal/GenProofModal";
-import { useContentContext } from "@/lib/content-context";
+import { useContentContext, type ProverResponse } from "@/lib/content-context";
 import { ProofModal } from "./ProofModal/ProofModal";
 import { motion } from "motion/react";
 import { IoMdClose } from "react-icons/io";
 import { parse_cert, verify_cert } from "zk-student-wasm";
 import { ISSUER_PUBKEY_DER } from "@/lib/issuerPubkeyDer";
+import { callProver } from "@/lib/protocol";
 
 const pemToDer = (pem: string) => {
   const base64 = pem
@@ -37,7 +38,7 @@ export const CreateZkProofPopup = () => {
     notBefore: Date;
     issuer: string;
   } | null>(null);
-  const [genZkProofStep, setGenZkProofStep] = useState(0);
+  const [genZkProofStep, setGenZkProofStep] = useState(1);
 
   const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -55,23 +56,26 @@ export const CreateZkProofPopup = () => {
 
       verify_cert(bytes, ISSUER_PUBKEY_DER);
       setCertificateFields(fields);
-
-      try {
-        await fetchProverApiZkProccess?.({
-          cert_der_hex: Buffer.from(bytes).toString("hex"),
-        });
-      } catch (apiError) {
-        console.error("Prover API error:", apiError);
-        alert("Erro ao processar certificado no servidor. Tente novamente.");
-        e.target.value = "";
-        return;
-      }
+      console.log("Certificate fields:", fields);
 
       setCreateCertificateStep?.(2);
+      const proverData = await fetchProverApiZkProccess?.({
+        cert_der_hex: Buffer.from(bytes).toString("hex"),
+      });
+
+      if (proverData?.is_valid_student && proverData?.is_not_expired) {
+        setGenZkProofStep(2);
+        callProver(
+          Buffer.from(bytes).toString("hex"),
+          Buffer.from(ISSUER_PUBKEY_DER).toString("hex"),
+        ).then((res) => {
+          console.log("Prover response:", res);
+          setGenZkProofStep(3);
+        });
+      }
     } catch (error) {
       e.target.value = "";
       console.error("Error parsing certificate:", error);
-      alert("Erro ao validar certificado localmente. Tente novamente.");
     }
   };
 
@@ -93,7 +97,10 @@ export const CreateZkProofPopup = () => {
         onFileChange={handleFileChange}
         inputRef={inputRef}
       />
-      <GenProofModal isOpen={createCertificateStep === 2} />
+      <GenProofModal
+        isOpen={createCertificateStep === 2}
+        currentStep={genZkProofStep}
+      />
       <ProofModal isOpen={createCertificateStep === 3} />
     </div>
   ) : (
