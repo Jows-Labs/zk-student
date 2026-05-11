@@ -29,8 +29,8 @@ export const steps: {
   },
   {
     Icon: FaRegIdCard,
-    title: "Mint",
-    description: "Receive your soulbound academic ID.",
+    title: "Generate",
+    description: "Generate your on-chain student Id.",
   },
   {
     Icon: MdOutlineRocketLaunch,

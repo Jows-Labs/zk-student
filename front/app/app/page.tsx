@@ -9,7 +9,7 @@ import { MdLockOutline } from "react-icons/md";
 import { steps } from "@/lib/steps";
 import { Footer } from "@/components/Footer/Footer";
 import { PoweredBySolSection } from "@/components/PoweredBySolanaSection/PoweredBySolSection";
-import { FaRegClipboard, FaRust } from "react-icons/fa";
+import { FaRegClipboard, FaRegIdCard, FaRust } from "react-icons/fa";
 import { PiHandCoinsBold } from "react-icons/pi";
 import { IoTicketOutline } from "react-icons/io5";
 import { ProtocolRewards } from "@/components/ProtocolRewards/ProtocolRewards";
@@ -19,14 +19,14 @@ import { useContentContext } from "@/lib/content-context";
 import { ZKStudentsSteps } from "@/components/ZKStudentsSteps/ZKStudentsSteps";
 import SnsLogo from "@/public/images/sns.png";
 import SolanaIcon from "@/public/images/solana.png";
-import { SiNextdotjs } from "react-icons/si";
 import ZKSGIcon from "@/public/images/logogradient.png";
 import Succint from "@/public/images/succint.svg";
+import { Credential } from "@/components/Credential/Credential";
 
 const step = 3;
 
 export default function App() {
-  const { setCreateCertificateStep } = useContentContext();
+  const { setCreateCertificateStep, studentCredential } = useContentContext();
 
   const rewards = [
     {
@@ -187,12 +187,22 @@ export default function App() {
                   <p className="text-2xl font-medium">Identity Vault</p>
                   <MdLockOutline className="text-2xl text-[#4C4355]" />
                 </div>
-                <div className="w-full border border-2 border-[#CEC2D8]/50 border-dashed px-10 py-14 flex flex-col gap-4 justify-center items-center rounded-lg">
-                  <LuGraduationCap className="bg-[#EDEEEF] text-[#4C4355] w-18 aspect-square h-auto p-2 rounded-2xl" />
-                  <p className="text-center text-[#4C4355]">
-                    No academic data found.<br></br>Complete verification to
-                    populate your profile.
-                  </p>
+                <div
+                  className={`w-full border border-2 border-[#CEC2D8]/50 border-dashed flex flex-col gap-4 justify-center items-center rounded-lg ${studentCredential ? "p-5" : " px-10 py-14"}`}
+                >
+                  {studentCredential ? (
+                    <>
+                      <Credential />
+                    </>
+                  ) : (
+                    <>
+                      <FaRegIdCard className="bg-[#EDEEEF] text-[#4C4355] w-18 aspect-square h-auto p-4 rounded-2xl" />
+                      <p className="text-center text-[#4C4355]">
+                        No academic data found.<br></br>Complete verification to
+                        populate your profile.
+                      </p>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
@@ -203,7 +213,7 @@ export default function App() {
                 </p>
                 <div className="flex gap-2 items-center">
                   <span className="w-3 h-3 bg-[#006D40] shadow-lg shadow-[#006D40] rounded-full"></span>
-                  <p className="text-2xl font-medium">Mainnet Beta</p>
+                  <p className="text-2xl font-medium">Devnet Beta</p>
                 </div>
               </div>
               <ProtocolRewards rewards={rewards} />

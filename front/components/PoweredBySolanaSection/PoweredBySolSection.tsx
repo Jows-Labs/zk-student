@@ -8,7 +8,7 @@ export const PoweredBySolSection = () => {
       <div className="pointer-events-none absolute inset-x-0 bottom-0 h-4 z-20 bg-gradient-to-t from-[#343440]/5 to-transparent" />
       <div className="rounded-full w-240 aspect-3/2 bg-[#7F20E4]/60 opacity-15 absolute left-1/2 top-1/2 -translate-y-1/2 transform -translate-x-1/2 z-0 blur-2xl"></div>
 
-      <div className="bg-[#343440]/5 h-32 aspect-square p-5 rounded-2xl border border-[#343440]/10 flex items-center justify-center">
+      <div className="bg-[#343440]/5 h-32 aspect-square p-5 rounded-2xl border border-[#343440]/10 flex items-center justify-center z-10">
         <Image
           src={SolanaIcon}
           alt="Solana Logo"
@@ -16,13 +16,13 @@ export const PoweredBySolSection = () => {
           loading="eager"
         />
       </div>
-      <h1 className="text-5xl font-semibold">Powered by Solana.</h1>
-      <p className="text-center text-[#343440]/60 text-lg">
+      <h1 className="text-5xl font-semibold z-10">Powered by Solana.</h1>
+      <p className="text-center text-[#343440]/60 text-lg z-10">
         Leveraging the world&apos;s most performant blockchain to provide
         student credentials that<br></br>are as fast as the internet and as
         secure as vault.
       </p>
-      <div className="flex gap-12 items-center justify-center">
+      <div className="flex gap-12 items-center justify-center z-10">
         <p className="text-2xl text-[#343440]/40 font-bold">DECENTRALIZED</p>
         <p className="text-2xl text-[#343440]/40 font-bold">SECURE</p>
         <p className="text-2xl text-[#343440]/40 font-bold">EFFICIENT</p>
