@@ -1,11 +1,7 @@
 import { AnchorProvider, Program, type Idl } from "@coral-xyz/anchor";
-import {
-  Connection,
-  PublicKey,
-  Transaction,
-  VersionedTransaction,
-} from "@solana/web3.js";
+import { Connection, PublicKey } from "@solana/web3.js";
 import idl from "./zk_student_protocol.json";
+import { PhantomWallet } from "@/interfaces/interfaces";
 
 const RPC = "https://api.devnet.solana.com";
 const PROVER_URL = "http://56.126.143.134:3001";
@@ -13,16 +9,6 @@ const PROVER_URL = "http://56.126.143.134:3001";
 // SP1 vkey hash from the prover API (circuits/prover/API.md)
 const SP1_VKEY_HASH =
   "009fe44465dfc00ca79eb22d4cbf4639566df6aac40d861010f0961a9aef871b";
-
-type PhantomWallet = {
-  publicKey: { toString(): string };
-  signTransaction<T extends Transaction | VersionedTransaction>(
-    tx: T,
-  ): Promise<T>;
-  signAllTransactions<T extends Transaction | VersionedTransaction>(
-    txs: T[],
-  ): Promise<T[]>;
-};
 
 export interface ProveResponse {
   proof_bytes: string;
@@ -40,6 +26,30 @@ export interface PublicValues {
   proof_timestamp: bigint;
 }
 
+export interface StudentCredential {
+  wallet: PublicKey;
+  issuerPubkeyHash: number[];
+  credentialType:
+    | { dne: Record<string, never> }
+    | { isic: Record<string, never> };
+  issuedAt: bigint;
+  expiresAt: bigint;
+  certNullifier: number[];
+}
+
+export interface CredentialFormatted {
+  credential: StudentCredential;
+  issuedAtDate: Date;
+  expiresAtDate: Date;
+  issuedAtFormatted: string;
+  expiresAtFormatted: string;
+  isExpired: boolean;
+}
+
+interface StudentCredentialClient {
+  fetchNullable(address: PublicKey): Promise<StudentCredential | null>;
+}
+
 function hexToBytes(hex: string): Uint8Array {
   const s = hex.startsWith("0x") ? hex.slice(2) : hex;
   if (s.length === 0) return new Uint8Array(0);
@@ -48,6 +58,102 @@ function hexToBytes(hex: string): Uint8Array {
     bytes[i] = parseInt(s.slice(i * 2, i * 2 + 2), 16);
   }
   return bytes;
+}
+
+function isTransactionCancelled(error: unknown): boolean {
+  if (!error) return false;
+
+  const errorMessage = String(error);
+  const errorObj = error as Record<string, unknown>;
+
+  // Common cancellation indicators
+  return (
+    errorMessage.includes("User rejected") ||
+    errorMessage.includes("User denied") ||
+    errorMessage.includes("cancelled") ||
+    errorMessage.includes("rejected") ||
+    errorMessage.includes("4001") || // MetaMask rejection code
+    errorObj.code === 4001 ||
+    errorObj.code === "USER_REJECTION"
+  );
+}
+
+// Helper to convert hex string to BigInt
+export function hexToBigInt(hexString: string): bigint {
+  const normalized = hexString.startsWith("0x") ? hexString : `0x${hexString}`;
+  return BigInt(normalized);
+}
+
+// Helper to convert hex string to number
+export function hexToNumber(hexString: string): number {
+  return Number(hexToBigInt(hexString));
+}
+
+// Helper to format timestamp (Unix seconds) to readable date
+export function formatTimestamp(timestamp: bigint | string | number): string {
+  const ms =
+    typeof timestamp === "bigint"
+      ? Number(timestamp) * 1000
+      : typeof timestamp === "string"
+        ? hexToNumber(timestamp) * 1000
+        : timestamp * 1000;
+
+  return new Date(ms).toLocaleDateString("pt-BR", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+}
+
+// Helper to get Date object from timestamp
+export function getDateFromTimestamp(
+  timestamp: bigint | string | number,
+): Date {
+  const ms =
+    typeof timestamp === "bigint"
+      ? Number(timestamp) * 1000
+      : typeof timestamp === "string"
+        ? hexToNumber(timestamp) * 1000
+        : timestamp * 1000;
+
+  return new Date(ms);
+}
+
+// Helper to check if credential is expired
+export function isCredentialExpired(
+  expiresAt: bigint | string | number,
+): boolean {
+  const expiryDate = getDateFromTimestamp(expiresAt);
+  return expiryDate < new Date();
+}
+
+// Helper to format credential with dates
+export function formatCredential(
+  credential: StudentCredential,
+): CredentialFormatted {
+  const issuedAtDate = getDateFromTimestamp(credential.issuedAt);
+  const expiresAtDate = getDateFromTimestamp(credential.expiresAt);
+
+  return {
+    credential,
+    issuedAtDate,
+    expiresAtDate,
+    issuedAtFormatted: issuedAtDate.toLocaleDateString("pt-BR", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    }),
+    expiresAtFormatted: expiresAtDate.toLocaleDateString("pt-BR", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    }),
+    isExpired: expiresAtDate < new Date(),
+  };
 }
 
 // Borsh layout of PublicValues (matches zk-student-types):
@@ -86,7 +192,7 @@ function makeProvider(
   connection: Connection,
   wallet: PhantomWallet,
 ): AnchorProvider {
-  const walletPubkey = new PublicKey(wallet.publicKey.toString());
+  const walletPubkey = getWalletPublicKey(wallet);
   return new AnchorProvider(
     connection,
     {
@@ -96,6 +202,51 @@ function makeProvider(
     },
     { commitment: "confirmed" },
   );
+}
+
+function getWalletPublicKey(wallet: PhantomWallet): PublicKey {
+  if (!wallet.publicKey) {
+    throw new Error("Wallet publicKey is not available");
+  }
+  return new PublicKey(wallet.publicKey.toString());
+}
+
+// Returns the StudentCredential for a wallet, or null if none exists.
+export async function fetchCredential(
+  walletAddress: string,
+): Promise<StudentCredential | null> {
+  try {
+    const connection = new Connection(RPC, "confirmed");
+    const wallet = new PublicKey(walletAddress);
+
+    // Create a minimal provider for reading (no signing needed)
+    const provider = new AnchorProvider(
+      connection,
+      {
+        publicKey: wallet,
+        signTransaction: async (tx: any) => tx,
+        signAllTransactions: async (txs: any) => txs,
+      } as any,
+      { commitment: "confirmed" },
+    );
+
+    const program = new Program(idl as Idl, provider);
+
+    const [credentialPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from("student-credential"), wallet.toBuffer()],
+      program.programId,
+    );
+
+    const client = (
+      program.account as unknown as {
+        studentCredential: StudentCredentialClient;
+      }
+    ).studentCredential;
+    return await client.fetchNullable(credentialPda);
+  } catch (error) {
+    console.error("Error fetching credential:", error);
+    return null;
+  }
 }
 
 export async function callProver(
@@ -117,11 +268,20 @@ export async function callProver(
 }
 
 // 1. Called once by the deployer to initialize the on-chain ProtocolConfig.
-export async function initializeProtocol(wallet: PhantomWallet): Promise<string> {
-  const connection = new Connection(RPC, "confirmed");
-  const program = new Program(idl as Idl, makeProvider(connection, wallet));
-  const vkeyHashBytes = Array.from(hexToBytes(SP1_VKEY_HASH));
-  return (program.methods as any).initialize(vkeyHashBytes).rpc();
+export async function initializeProtocol(
+  wallet: PhantomWallet,
+): Promise<string> {
+  try {
+    const connection = new Connection(RPC, "confirmed");
+    const program = new Program(idl as Idl, makeProvider(connection, wallet));
+    const vkeyHashBytes = Array.from(hexToBytes(SP1_VKEY_HASH));
+    return await (program.methods as any).initialize(vkeyHashBytes).rpc();
+  } catch (error) {
+    if (isTransactionCancelled(error)) {
+      throw new Error("Transaction cancelled by user");
+    }
+    throw error;
+  }
 }
 
 // 2. Called by the authority to register a trusted certificate issuer.
@@ -134,18 +294,34 @@ export async function addIssuer(
   credentialType: 0 | 1,
   name: string,
 ): Promise<string> {
-  const connection = new Connection(RPC, "confirmed");
-  const program = new Program(idl as Idl, makeProvider(connection, wallet));
-  const issuerPubkeyHash = Array.from(
-    new Uint8Array(await crypto.subtle.digest("SHA-256", hexToBytes(issuerPubkeyHex))),
-  );
-  return (program.methods as any)
-    .addIssuer(
-      issuerPubkeyHash,
-      credentialType === 0 ? { dne: {} } : { isic: {} },
-      name,
-    )
-    .rpc();
+  try {
+    const connection = new Connection(RPC, "confirmed");
+    const program = new Program(idl as Idl, makeProvider(connection, wallet));
+    const issuerPubkeyBytes = hexToBytes(issuerPubkeyHex);
+    const issuerPubkeyHash = Array.from(
+      new Uint8Array(
+        await crypto.subtle.digest(
+          "SHA-256",
+          issuerPubkeyBytes.buffer.slice(
+            issuerPubkeyBytes.byteOffset,
+            issuerPubkeyBytes.byteOffset + issuerPubkeyBytes.byteLength,
+          ) as ArrayBuffer,
+        ),
+      ),
+    );
+    return await (program.methods as any)
+      .addIssuer(
+        issuerPubkeyHash,
+        credentialType === 0 ? { dne: {} } : { isic: {} },
+        name,
+      )
+      .rpc();
+  } catch (error) {
+    if (isTransactionCancelled(error)) {
+      throw new Error("Transaction cancelled by user");
+    }
+    throw error;
+  }
 }
 
 // 3. Called by the student after /prove returns.
@@ -153,21 +329,52 @@ export async function issueCredential(
   wallet: PhantomWallet,
   proveResponse: ProveResponse,
 ): Promise<string> {
-  const connection = new Connection(RPC, "confirmed");
-  const walletPubkey = new PublicKey(wallet.publicKey.toString());
-  const pv = parsePublicValues(proveResponse.public_values_bytes);
-  const proofBytes = Array.from(hexToBytes(proveResponse.proof_bytes));
-  const publicValuesBytes = Array.from(
-    hexToBytes(proveResponse.public_values_bytes),
-  );
-  const program = new Program(idl as Idl, makeProvider(connection, wallet));
-  return (program.methods as any)
-    .issueCredential(
-      proofBytes,
-      publicValuesBytes,
-      pv.cert_nullifier,
-      pv.issuer_pubkey_hash,
-    )
-    .accounts({ wallet: walletPubkey })
-    .rpc();
+  try {
+    const connection = new Connection(RPC, "confirmed");
+    const walletPubkey = getWalletPublicKey(wallet);
+
+    // Validate response data
+    if (!proveResponse.proof_bytes || proveResponse.proof_bytes.length === 0) {
+      throw new Error("proof_bytes is empty or missing");
+    }
+    if (
+      !proveResponse.public_values_bytes ||
+      proveResponse.public_values_bytes.length === 0
+    ) {
+      throw new Error("public_values_bytes is empty or missing");
+    }
+
+    const pv = parsePublicValues(proveResponse.public_values_bytes);
+    const proofBytes = Array.from(hexToBytes(proveResponse.proof_bytes));
+    const publicValuesBytes = Array.from(
+      hexToBytes(proveResponse.public_values_bytes),
+    );
+
+    if (pv.cert_nullifier.length !== 32) {
+      throw new Error(
+        `cert_nullifier must be 32 bytes, got ${pv.cert_nullifier.length}`,
+      );
+    }
+    if (pv.issuer_pubkey_hash.length !== 32) {
+      throw new Error(
+        `issuer_pubkey_hash must be 32 bytes, got ${pv.issuer_pubkey_hash.length}`,
+      );
+    }
+
+    const program = new Program(idl as Idl, makeProvider(connection, wallet));
+    return await (program.methods as any)
+      .issueCredential(
+        Buffer.from(proofBytes),
+        Buffer.from(publicValuesBytes),
+        pv.cert_nullifier,
+        pv.issuer_pubkey_hash,
+      )
+      .accounts({ wallet: walletPubkey })
+      .rpc();
+  } catch (error) {
+    if (isTransactionCancelled(error)) {
+      throw new Error("Transaction cancelled by user");
+    }
+    throw error;
+  }
 }

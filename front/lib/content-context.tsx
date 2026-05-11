@@ -10,18 +10,13 @@ import {
 import { getSNSPrimaryDomain } from "./sns";
 import type { Address } from "@solana/kit";
 import { ISSUER_PUBKEY_DER } from "./issuerPubkeyDer";
-
-interface PhantomWallet {
-  isPhantom: boolean;
-  isConnected?: boolean;
-  publicKey?: { toString: () => string } | null;
-  connect: (options?: { onlyIfTrusted?: boolean }) => Promise<{
-    publicKey: { toString: () => string };
-  }>;
-  disconnect: () => Promise<void>;
-  on?: (event: string, handler: (...args: any[]) => void) => void;
-  off?: (event: string, handler: (...args: any[]) => void) => void;
-}
+import { PhantomWallet } from "@/interfaces/interfaces";
+import {
+  fetchCredential,
+  type StudentCredential,
+  formatCredential,
+  type CredentialFormatted,
+} from "./protocol";
 
 interface SolanaWindow extends Window {
   solana?: PhantomWallet;
@@ -52,6 +47,9 @@ type ContentContextValue = {
   fetchProverApiZkProccess?: (params: {
     cert_der_hex: string;
   }) => Promise<ProverResponse>;
+  setWallet?: (wallet: PhantomWallet | null) => void;
+  wallet?: PhantomWallet | null;
+  studentCredential?: CredentialFormatted | null;
 };
 
 const ContentContext = createContext<ContentContextValue>({
@@ -71,6 +69,9 @@ const ContentContext = createContext<ContentContextValue>({
     cert_nullifier: "",
     proof_timestamp: 0,
   }),
+  setWallet: () => {},
+  wallet: null,
+  studentCredential: null,
 } as ContentContextValue);
 
 export function useContentContext() {
@@ -85,8 +86,11 @@ export function useContentContext() {
 
 export function ContextProvider({ children }: ContentContextProviderProps) {
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
+  const [wallet, setWallet] = useState<PhantomWallet | null>(null);
   const [createCertificateStep, setCreateCertificateStep] = useState<number>(0);
   const [primaryDomain, setPrimaryDomain] = useState<string | null>(null);
+  const [studentCredential, setStudentCredential] =
+    useState<CredentialFormatted | null>(null);
 
   const fetchPrimaryDomain = async (address: string) => {
     try {
@@ -98,6 +102,26 @@ export function ContextProvider({ children }: ContentContextProviderProps) {
       return domainName;
     } catch (error) {
       console.warn("Erro ao buscar domínio SNS:", error);
+      return null;
+    }
+  };
+
+  const checkStudentCredential = async (walletAddr: string) => {
+    try {
+      const credential = await fetchCredential(walletAddr);
+      if (credential) {
+        const formatted = formatCredential(credential);
+        setStudentCredential(formatted);
+        console.log("Student credential found:", formatted);
+        return formatted;
+      } else {
+        setStudentCredential(null);
+        console.log("No student credential found");
+        return null;
+      }
+    } catch (error) {
+      console.error("Error checking student credential:", error);
+      setStudentCredential(null);
       return null;
     }
   };
@@ -115,8 +139,8 @@ export function ContextProvider({ children }: ContentContextProviderProps) {
       try {
         localStorage.setItem("phantom.connected", "true");
       } catch (e) {}
-
       setWalletAddress(response.publicKey.toString());
+      setWallet(solana);
     } catch (error) {
       console.log("Error connecting wallet:", error);
     }
@@ -135,6 +159,7 @@ export function ContextProvider({ children }: ContentContextProviderProps) {
       } catch (e) {}
 
       setWalletAddress(null);
+      setWallet(null);
     } catch (error) {
       console.error("Error disconnecting wallet:", error);
     }
@@ -143,8 +168,10 @@ export function ContextProvider({ children }: ContentContextProviderProps) {
   useEffect(() => {
     if (walletAddress) {
       void fetchPrimaryDomain(walletAddress);
+      void checkStudentCredential(walletAddress);
     } else {
       setPrimaryDomain(null);
+      setStudentCredential(null);
     }
   }, [walletAddress]);
 
@@ -160,10 +187,12 @@ export function ContextProvider({ children }: ContentContextProviderProps) {
 
         const handleConnect = () => {
           setWalletAddress(solana.publicKey?.toString() ?? null);
+          setWallet(solana);
         };
 
         const handleDisconnect = () => {
           setWalletAddress(null);
+          setWallet(null);
         };
 
         solana.on?.("connect", handleConnect);
@@ -182,13 +211,16 @@ export function ContextProvider({ children }: ContentContextProviderProps) {
             const resp = await solana.connect({ onlyIfTrusted: true });
             if (resp?.publicKey) {
               setWalletAddress(resp.publicKey.toString());
+              setWallet(solana);
             }
           } catch (e) {}
         } else {
           if (solana.isPhantom && solana.publicKey) {
             setWalletAddress(solana.publicKey.toString());
+            setWallet(solana);
           } else if (solana.isPhantom && solana.isConnected) {
             setWalletAddress(solana.publicKey?.toString() ?? null);
+            setWallet(solana);
           }
         }
 
@@ -245,6 +277,9 @@ export function ContextProvider({ children }: ContentContextProviderProps) {
         primaryDomain,
         getSNSPrimaryDomain: fetchPrimaryDomain,
         fetchProverApiZkProccess: fetchProverApiZkProccess,
+        setWallet,
+        wallet,
+        studentCredential,
       }}
     >
       {children}
