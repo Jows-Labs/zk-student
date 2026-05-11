@@ -1,10 +1,28 @@
 import { AnchorProvider, Program, type Idl } from "@coral-xyz/anchor";
-import { Connection, PublicKey, Transaction, VersionedTransaction } from "@solana/web3.js";
-import idl from "../../target/idl/zk_student_protocol.json";
+import {
+  Connection,
+  PublicKey,
+  Transaction,
+  VersionedTransaction,
+} from "@solana/web3.js";
+import idl from "./zk_student_protocol.json";
 
-const PROGRAM_ID = new PublicKey("8GzzGmVbwTZ982GF7kpbchEf2VVv6wWXHZrmtj8dJJ4z");
 const RPC = "https://api.devnet.solana.com";
 const PROVER_URL = "http://56.126.143.134:3001";
+
+// SP1 vkey hash from the prover API (circuits/prover/API.md)
+const SP1_VKEY_HASH =
+  "009fe44465dfc00ca79eb22d4cbf4639566df6aac40d861010f0961a9aef871b";
+
+type PhantomWallet = {
+  publicKey: { toString(): string };
+  signTransaction<T extends Transaction | VersionedTransaction>(
+    tx: T,
+  ): Promise<T>;
+  signAllTransactions<T extends Transaction | VersionedTransaction>(
+    txs: T[],
+  ): Promise<T[]>;
+};
 
 export interface ProveResponse {
   proof_bytes: string;
@@ -64,6 +82,22 @@ export function parsePublicValues(publicValuesHex: string): PublicValues {
   };
 }
 
+function makeProvider(
+  connection: Connection,
+  wallet: PhantomWallet,
+): AnchorProvider {
+  const walletPubkey = new PublicKey(wallet.publicKey.toString());
+  return new AnchorProvider(
+    connection,
+    {
+      publicKey: walletPubkey,
+      signTransaction: (tx) => wallet.signTransaction(tx),
+      signAllTransactions: (txs) => wallet.signAllTransactions(txs),
+    },
+    { commitment: "confirmed" },
+  );
+}
+
 export async function callProver(
   certDerHex: string,
   issuerPubkeyHex: string,
@@ -82,55 +116,58 @@ export async function callProver(
   return res.json();
 }
 
+// 1. Called once by the deployer to initialize the on-chain ProtocolConfig.
+export async function initializeProtocol(wallet: PhantomWallet): Promise<string> {
+  const connection = new Connection(RPC, "confirmed");
+  const program = new Program(idl as Idl, makeProvider(connection, wallet));
+  const vkeyHashBytes = Array.from(hexToBytes(SP1_VKEY_HASH));
+  return (program.methods as any).initialize(vkeyHashBytes).rpc();
+}
+
+// 2. Called by the authority to register a trusted certificate issuer.
+//    issuerPubkeyHex: hex-encoded PKCS#1 DER of the issuer RSA public key
+//    credentialType: 0 = DNE, 1 = ISIC
+//    name: human-readable name (max 64 bytes)
+export async function addIssuer(
+  wallet: PhantomWallet,
+  issuerPubkeyHex: string,
+  credentialType: 0 | 1,
+  name: string,
+): Promise<string> {
+  const connection = new Connection(RPC, "confirmed");
+  const program = new Program(idl as Idl, makeProvider(connection, wallet));
+  const issuerPubkeyHash = Array.from(
+    new Uint8Array(await crypto.subtle.digest("SHA-256", hexToBytes(issuerPubkeyHex))),
+  );
+  return (program.methods as any)
+    .addIssuer(
+      issuerPubkeyHash,
+      credentialType === 0 ? { dne: {} } : { isic: {} },
+      name,
+    )
+    .rpc();
+}
+
+// 3. Called by the student after /prove returns.
 export async function issueCredential(
-  phantomWallet: { publicKey: { toString(): string }; signAndSendTransaction(tx: Transaction | VersionedTransaction): Promise<{ signature: string }> },
+  wallet: PhantomWallet,
   proveResponse: ProveResponse,
 ): Promise<string> {
   const connection = new Connection(RPC, "confirmed");
-  const walletPubkey = new PublicKey(phantomWallet.publicKey.toString());
-
+  const walletPubkey = new PublicKey(wallet.publicKey.toString());
   const pv = parsePublicValues(proveResponse.public_values_bytes);
-
   const proofBytes = Array.from(hexToBytes(proveResponse.proof_bytes));
-  const publicValuesBytes = Array.from(hexToBytes(proveResponse.public_values_bytes));
-
-  const [configPda] = PublicKey.findProgramAddressSync(
-    [Buffer.from("config")],
-    PROGRAM_ID,
+  const publicValuesBytes = Array.from(
+    hexToBytes(proveResponse.public_values_bytes),
   );
-  const [trustedIssuerPda] = PublicKey.findProgramAddressSync(
-    [Buffer.from("trusted-issuer"), Buffer.from(pv.issuer_pubkey_hash)],
-    PROGRAM_ID,
-  );
-
-  const provider = new AnchorProvider(
-    connection,
-    {
-      publicKey: walletPubkey,
-      signTransaction: async <T extends Transaction | VersionedTransaction>(tx: T): Promise<T> => {
-        await phantomWallet.signAndSendTransaction(tx);
-        return tx;
-      },
-      signAllTransactions: async <T extends Transaction | VersionedTransaction>(txs: T[]): Promise<T[]> => txs,
-    },
-    { commitment: "confirmed" },
-  );
-
-  const program = new Program(idl as Idl, provider);
-
-  const tx = await (program.methods as any)
+  const program = new Program(idl as Idl, makeProvider(connection, wallet));
+  return (program.methods as any)
     .issueCredential(
       proofBytes,
       publicValuesBytes,
       pv.cert_nullifier,
       pv.issuer_pubkey_hash,
     )
-    .accounts({
-      wallet: walletPubkey,
-      config: configPda,
-      trustedIssuer: trustedIssuerPda,
-    })
+    .accounts({ wallet: walletPubkey })
     .rpc();
-
-  return tx;
 }
