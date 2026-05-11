@@ -66,7 +66,6 @@ function isTransactionCancelled(error: unknown): boolean {
   const errorMessage = String(error);
   const errorObj = error as Record<string, unknown>;
 
-  // Common cancellation indicators
   return (
     errorMessage.includes("User rejected") ||
     errorMessage.includes("User denied") ||
@@ -78,18 +77,15 @@ function isTransactionCancelled(error: unknown): boolean {
   );
 }
 
-// Helper to convert hex string to BigInt
 export function hexToBigInt(hexString: string): bigint {
   const normalized = hexString.startsWith("0x") ? hexString : `0x${hexString}`;
   return BigInt(normalized);
 }
 
-// Helper to convert hex string to number
 export function hexToNumber(hexString: string): number {
   return Number(hexToBigInt(hexString));
 }
 
-// Helper to format timestamp (Unix seconds) to readable date
 export function formatTimestamp(timestamp: bigint | string | number): string {
   const ms =
     typeof timestamp === "bigint"
@@ -105,7 +101,6 @@ export function formatTimestamp(timestamp: bigint | string | number): string {
   });
 }
 
-// Helper to get Date object from timestamp
 export function getDateFromTimestamp(
   timestamp: bigint | string | number,
 ): Date {
@@ -119,7 +114,6 @@ export function getDateFromTimestamp(
   return new Date(ms);
 }
 
-// Helper to check if credential is expired
 export function isCredentialExpired(
   expiresAt: bigint | string | number,
 ): boolean {
@@ -127,7 +121,6 @@ export function isCredentialExpired(
   return expiryDate < new Date();
 }
 
-// Helper to format credential with dates
 export function formatCredential(
   credential: StudentCredential,
 ): CredentialFormatted {
@@ -156,14 +149,6 @@ export function formatCredential(
   };
 }
 
-// Borsh layout of PublicValues (matches zk-student-types):
-//   is_valid_student: bool  (1)
-//   is_not_expired:   bool  (1)
-//   issuer_pubkey_hash: [u8;32]
-//   credential_type:  u8    (1)
-//   cert_expires_at:  i64   (8, little-endian)
-//   cert_nullifier:   [u8;32]
-//   proof_timestamp:  i64   (8, little-endian)
 export function parsePublicValues(publicValuesHex: string): PublicValues {
   const b = hexToBytes(publicValuesHex);
   let offset = 0;
@@ -186,6 +171,31 @@ export function parsePublicValues(publicValuesHex: string): PublicValues {
     cert_nullifier,
     proof_timestamp,
   };
+}
+
+interface RpcBuilder {
+  rpc(): Promise<string>;
+}
+
+interface ProgramMethods {
+  initialize(vkeyHash: number[]): RpcBuilder;
+  addIssuer(
+    issuerPubkeyHash: number[],
+    credentialType: { dne: Record<string, never> } | { isic: Record<string, never> },
+    name: string,
+  ): RpcBuilder;
+  issueCredential(
+    proofBytes: number[],
+    publicValuesBytes: number[],
+    certNullifier: number[],
+    issuerPubkeyHash: number[],
+  ): { accounts(a: { wallet: PublicKey }): RpcBuilder };
+  renewCredential(
+    proofBytes: number[],
+    publicValuesBytes: number[],
+    certNullifier: number[],
+    issuerPubkeyHash: number[],
+  ): { accounts(a: { wallet: PublicKey }): RpcBuilder };
 }
 
 function makeProvider(
@@ -211,7 +221,6 @@ function getWalletPublicKey(wallet: PhantomWallet): PublicKey {
   return new PublicKey(wallet.publicKey.toString());
 }
 
-// Returns the StudentCredential for a wallet, or null if none exists.
 export async function fetchCredential(
   walletAddress: string,
 ): Promise<StudentCredential | null> {
@@ -219,14 +228,13 @@ export async function fetchCredential(
     const connection = new Connection(RPC, "confirmed");
     const wallet = new PublicKey(walletAddress);
 
-    // Create a minimal provider for reading (no signing needed)
     const provider = new AnchorProvider(
       connection,
       {
         publicKey: wallet,
-        signTransaction: async (tx: any) => tx,
-        signAllTransactions: async (txs: any) => txs,
-      } as any,
+        signTransaction: async <T>(tx: T) => tx,
+        signAllTransactions: async <T>(txs: T[]) => txs,
+      },
       { commitment: "confirmed" },
     );
 
@@ -267,7 +275,6 @@ export async function callProver(
   return res.json();
 }
 
-// 1. Called once by the deployer to initialize the on-chain ProtocolConfig.
 export async function initializeProtocol(
   wallet: PhantomWallet,
 ): Promise<string> {
@@ -275,7 +282,7 @@ export async function initializeProtocol(
     const connection = new Connection(RPC, "confirmed");
     const program = new Program(idl as Idl, makeProvider(connection, wallet));
     const vkeyHashBytes = Array.from(hexToBytes(SP1_VKEY_HASH));
-    return await (program.methods as any).initialize(vkeyHashBytes).rpc();
+    return await (program.methods as unknown as ProgramMethods).initialize(vkeyHashBytes).rpc();
   } catch (error) {
     if (isTransactionCancelled(error)) {
       throw new Error("Transaction cancelled by user");
@@ -284,10 +291,6 @@ export async function initializeProtocol(
   }
 }
 
-// 2. Called by the authority to register a trusted certificate issuer.
-//    issuerPubkeyHex: hex-encoded PKCS#1 DER of the issuer RSA public key
-//    credentialType: 0 = DNE, 1 = ISIC
-//    name: human-readable name (max 64 bytes)
 export async function addIssuer(
   wallet: PhantomWallet,
   issuerPubkeyHex: string,
@@ -309,7 +312,7 @@ export async function addIssuer(
         ),
       ),
     );
-    return await (program.methods as any)
+    return await (program.methods as unknown as ProgramMethods)
       .addIssuer(
         issuerPubkeyHash,
         credentialType === 0 ? { dne: {} } : { isic: {} },
@@ -324,7 +327,34 @@ export async function addIssuer(
   }
 }
 
-// 3. Called by the student after /prove returns.
+export async function renewCredential(
+  wallet: PhantomWallet,
+  proveResponse: ProveResponse,
+): Promise<string> {
+  try {
+    const connection = new Connection(RPC, "confirmed");
+    const walletPubkey = getWalletPublicKey(wallet);
+    const pv = parsePublicValues(proveResponse.public_values_bytes);
+    const proofBytes = Array.from(hexToBytes(proveResponse.proof_bytes));
+    const publicValuesBytes = Array.from(hexToBytes(proveResponse.public_values_bytes));
+    const program = new Program(idl as Idl, makeProvider(connection, wallet));
+    return await (program.methods as unknown as ProgramMethods)
+      .renewCredential(
+        proofBytes,
+        publicValuesBytes,
+        pv.cert_nullifier,
+        pv.issuer_pubkey_hash,
+      )
+      .accounts({ wallet: walletPubkey })
+      .rpc();
+  } catch (error) {
+    if (isTransactionCancelled(error)) {
+      throw new Error("Transaction cancelled by user");
+    }
+    throw error;
+  }
+}
+
 export async function issueCredential(
   wallet: PhantomWallet,
   proveResponse: ProveResponse,
@@ -333,7 +363,6 @@ export async function issueCredential(
     const connection = new Connection(RPC, "confirmed");
     const walletPubkey = getWalletPublicKey(wallet);
 
-    // Validate response data
     if (!proveResponse.proof_bytes || proveResponse.proof_bytes.length === 0) {
       throw new Error("proof_bytes is empty or missing");
     }
@@ -362,7 +391,7 @@ export async function issueCredential(
     }
 
     const program = new Program(idl as Idl, makeProvider(connection, wallet));
-    return await (program.methods as any)
+    return await (program.methods as unknown as ProgramMethods)
       .issueCredential(
         Buffer.from(proofBytes),
         Buffer.from(publicValuesBytes),
