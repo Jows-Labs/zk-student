@@ -203,7 +203,7 @@ export default function App() {
                 </p>
                 <div className="flex gap-2 items-center">
                   <span className="w-3 h-3 bg-[#006D40] shadow-lg shadow-[#006D40] rounded-full"></span>
-                  <p className="text-2xl font-medium">Mainnet Beta</p>
+                  <p className="text-2xl font-medium">Devnet Beta</p>
                 </div>
               </div>
               <ProtocolRewards rewards={rewards} />
