@@ -1,3 +1,6 @@
+[toolchain]
+solana_version = "2.3.0"
+
 [features]
 seeds = false
 skip-lint = false
@@ -6,8 +9,12 @@ skip-lint = false
 zk_student_protocol = "8GzzGmVbwTZ982GF7kpbchEf2VVv6wWXHZrmtj8dJJ4z"
 zk_meia = "HoK1YHdbfTQppTnquqAcGQ4v3DZczz7e7CnmDSm9v9FX"
 
+[programs.devnet]
+zk_student_protocol = "8GzzGmVbwTZ982GF7kpbchEf2VVv6wWXHZrmtj8dJJ4z"
+zk_meia = "HoK1YHdbfTQppTnquqAcGQ4v3DZczz7e7CnmDSm9v9FX"
+
 [provider]
-cluster = "localnet"
+cluster = "devnet"
 wallet = "~/.config/solana/id.json"
 
 [workspace]
