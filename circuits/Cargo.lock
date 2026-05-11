@@ -1340,7 +1340,7 @@ dependencies = [
  "bitflags",
  "cexpr",
  "clang-sys",
- "itertools 0.12.1",
+ "itertools 0.13.0",
  "log",
  "prettyplease",
  "proc-macro2",
@@ -5744,7 +5744,7 @@ dependencies = [
  "sp1-recursion-core",
  "sp1-recursion-gnark-ffi",
  "sp1-stark",
- "sp1-verifier",
+ "sp1-verifier 5.2.4",
  "thiserror 1.0.69",
  "tracing",
  "tracing-appender",
@@ -5972,6 +5972,20 @@ dependencies = [
  "strum",
  "sysinfo",
  "tracing",
+]
+
+[[package]]
+name = "sp1-verifier"
+version = "4.1.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b4d4609dbb9662e4619e35666ea5fd89ee3dee59c2822b9c9c09dc25f585e3be"
+dependencies = [
+ "cfg-if",
+ "hex",
+ "lazy_static",
+ "sha2 0.10.9",
+ "substrate-bn-succinct",
+ "thiserror 2.0.18",
 ]
 
 [[package]]
@@ -7629,6 +7643,7 @@ dependencies = [
  "sha2 0.10.9",
  "sp1-build",
  "sp1-sdk",
+ "sp1-verifier 4.1.7",
  "tokio",
  "tower-http 0.5.2",
  "tracing",

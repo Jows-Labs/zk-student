@@ -1,5 +1,6 @@
 fn main() {
     // SP1_BUILD_SKIP — used by IDE indexing / cargo check. Write a stub so include_elf! compiles.
+    println!("cargo:rerun-if-env-changed=SP1_BUILD_SKIP");
     if std::env::var("SP1_BUILD_SKIP").is_ok() {
         let out_dir = std::env::var("OUT_DIR").unwrap();
         let stub = format!("{out_dir}/zk-student-circuit.elf");

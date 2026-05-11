@@ -9,6 +9,7 @@ path = "src/main.rs"
 
 [dependencies]
 sp1-sdk = { version = "5" }
+sp1-verifier = { version = "4.0.0", default-features = false }
 axum = "0.7"
 tokio = { version = "1", features = ["full"] }
 serde = { workspace = true }

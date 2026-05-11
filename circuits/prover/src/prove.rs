@@ -1,6 +1,7 @@
 use anyhow::{Context, Result};
 use borsh::BorshDeserialize;
 use sp1_sdk::{include_elf, HashableKey, ProverClient, SP1Stdin};
+use sp1_verifier::Groth16Verifier;
 use zk_student_types::{CertWitness, PublicValues};
 
 use crate::types::ProveResponse;
@@ -34,7 +35,18 @@ pub async fn prove(witness: CertWitness) -> Result<ProveResponse> {
 
     borsh_decode(&public_values_bytes)?;
 
-    tracing::info!("proof generated ({} bytes)", proof_bytes.len());
+    let is_mock = std::env::var("SP1_PROVER").as_deref() == Ok("mock");
+    if !is_mock {
+        Groth16Verifier::verify(
+            &proof_bytes,
+            &public_values_bytes,
+            &vkey_hash,
+            &sp1_verifier::GROTH16_VK_BYTES,
+        )
+        .context("off-chain Groth16 verification failed")?;
+    }
+
+    tracing::info!("proof generated and verified ({} bytes)", proof_bytes.len());
 
     Ok(ProveResponse {
         proof_bytes: format!("0x{}", hex::encode(&proof_bytes)),
