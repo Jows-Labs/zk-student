@@ -1,5 +1,6 @@
 import { AnchorProvider, Program, type Idl } from "@coral-xyz/anchor";
 import { Connection, PublicKey } from "@solana/web3.js";
+import { Buffer } from "buffer";
 import idl from "./zk_student_protocol.json";
 import { PhantomWallet } from "@/interfaces/interfaces";
 
@@ -194,14 +195,14 @@ interface ProgramMethods {
     name: string,
   ): RpcBuilder;
   issueCredential(
-    proofBytes: Uint8Array,
-    publicValuesBytes: Uint8Array,
+    proofBytes: Buffer,
+    publicValuesBytes: Buffer,
     certNullifier: number[],
     issuerPubkeyHash: number[],
   ): { accounts(a: { wallet: PublicKey }): RpcBuilder };
   renewCredential(
-    proofBytes: Uint8Array,
-    publicValuesBytes: Uint8Array,
+    proofBytes: Buffer,
+    publicValuesBytes: Buffer,
     certNullifier: number[],
     issuerPubkeyHash: number[],
   ): { accounts(a: { wallet: PublicKey }): RpcBuilder };
@@ -346,8 +347,8 @@ export async function renewCredential(
     const connection = new Connection(RPC, "confirmed");
     const walletPubkey = getWalletPublicKey(wallet);
     const pv = parsePublicValues(proveResponse.public_values_bytes);
-    const proofBytes = hexToBytes(proveResponse.proof_bytes);
-    const publicValuesBytes = hexToBytes(proveResponse.public_values_bytes);
+    const proofBytes = Buffer.from(hexToBytes(proveResponse.proof_bytes));
+    const publicValuesBytes = Buffer.from(hexToBytes(proveResponse.public_values_bytes));
     const program = new Program(idl as Idl, makeProvider(connection, wallet));
     return await (program.methods as unknown as ProgramMethods)
       .renewCredential(
@@ -385,8 +386,8 @@ export async function issueCredential(
     }
 
     const pv = parsePublicValues(proveResponse.public_values_bytes);
-    const proofBytes = hexToBytes(proveResponse.proof_bytes);
-    const publicValuesBytes = hexToBytes(proveResponse.public_values_bytes);
+    const proofBytes = Buffer.from(hexToBytes(proveResponse.proof_bytes));
+    const publicValuesBytes = Buffer.from(hexToBytes(proveResponse.public_values_bytes));
 
     if (pv.cert_nullifier.length !== 32) {
       throw new Error(
