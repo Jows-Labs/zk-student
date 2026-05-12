@@ -94,9 +94,7 @@ export function ContextProvider({ children }: ContentContextProviderProps) {
 
   const fetchPrimaryDomain = async (address: string) => {
     try {
-      const domain = await getSNSPrimaryDomain(
-        "85mzQzu2DZ1yzbTm9d3F9wUenoFyn2HqdD1mviK2UKPZ" as Address,
-      );
+      const domain = await getSNSPrimaryDomain(address as Address);
       const domainName = domain?.domain ?? null;
       setPrimaryDomain(domainName);
       return domainName;

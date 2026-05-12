@@ -43,6 +43,7 @@ export default function Home() {
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               className="py-4 px-12 rounded-xl text-xl border border-[#CEC2D8] cursor-pointer"
+              onClick={() => window.open("https://jows-labs.github.io/zk-student/", "_blank")}
             >
               View Docs
             </motion.button>

@@ -26,7 +26,7 @@ import { Credential } from "@/components/Credential/Credential";
 const step = 3;
 
 export default function App() {
-  const { setCreateCertificateStep, studentCredential } = useContentContext();
+  const { setCreateCertificateStep, studentCredential, walletAddress, connectWallet } = useContentContext();
 
   const rewards = [
     {
@@ -90,7 +90,7 @@ export default function App() {
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     className="py-4 px-12 flex items-center gap-1 rounded-xl text-2xl bg-radial-[at_25%_25%] from-[#9945FF] to-[#14F195] to-75% cursor-pointer text-white w-fit"
-                    onClick={() => setCreateCertificateStep?.(1)}
+                    onClick={() => walletAddress ? setCreateCertificateStep?.(1) : connectWallet()}
                   >
                     <p className="text-nowrap">Begin Verification</p>
                     <IoMdArrowForward className="h-7 w-auto" />
