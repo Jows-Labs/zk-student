@@ -1,6 +1,6 @@
 # ZK-Student Prover API
 
-Base URL: `http://56.126.143.134:3001` (EC2) or `http://localhost:3001` (local)
+Base URL: `https://56.126.143.134.nip.io` (EC2) or `http://localhost:3001` (local)
 
 Start server: `SP1_PROVER=mock ./server` (mock, instant) or `SP1_PROVER=cpu ./server` (real, slow)
 
