@@ -8,6 +8,7 @@ interface UploadPemModalProps {
   isOpen: boolean;
   onFileSelect: () => void;
   onFileChange: (e: ChangeEvent<HTMLInputElement>) => void;
+  onMockCert: () => void;
   inputRef: RefObject<HTMLInputElement>;
 }
 
@@ -15,6 +16,7 @@ export const UploadPemModal = ({
   isOpen,
   onFileSelect,
   onFileChange,
+  onMockCert,
   inputRef,
 }: UploadPemModalProps) => {
   return isOpen ? (
@@ -44,6 +46,14 @@ export const UploadPemModal = ({
           onClick={onFileSelect}
         >
           <p className="text-nowrap">Select Certificate</p>
+        </motion.button>
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          className="py-2 px-8 rounded-xl text-sm border border-[#7F20E4] text-[#7F20E4] cursor-pointer w-fit"
+          onClick={onMockCert}
+        >
+          Use Demo Certificate
         </motion.button>
         <div className="flex gap-10">
           <div className="flex gap-1 items-center text-[#4C4355]">

@@ -4,7 +4,7 @@ import idl from "./zk_student_protocol.json";
 import { PhantomWallet } from "@/interfaces/interfaces";
 
 const RPC = "https://api.devnet.solana.com";
-const PROVER_URL = process.env.NEXT_PUBLIC_PROVER_API_URL ?? "http://localhost:3001";
+const PROVER_URL = process.env.NEXT_PUBLIC_PROVER_API_URL ?? "https://56.126.143.134.nip.io";
 
 // SP1 vkey hash from the prover API (circuits/prover/API.md)
 const SP1_VKEY_HASH =
@@ -335,8 +335,8 @@ export async function renewCredential(
     const connection = new Connection(RPC, "confirmed");
     const walletPubkey = getWalletPublicKey(wallet);
     const pv = parsePublicValues(proveResponse.public_values_bytes);
-    const proofBytes = Array.from(hexToBytes(proveResponse.proof_bytes));
-    const publicValuesBytes = Array.from(hexToBytes(proveResponse.public_values_bytes));
+    const proofBytes = hexToBytes(proveResponse.proof_bytes);
+    const publicValuesBytes = hexToBytes(proveResponse.public_values_bytes);
     const program = new Program(idl as Idl, makeProvider(connection, wallet));
     return await (program.methods as unknown as ProgramMethods)
       .renewCredential(
@@ -374,10 +374,8 @@ export async function issueCredential(
     }
 
     const pv = parsePublicValues(proveResponse.public_values_bytes);
-    const proofBytes = Array.from(hexToBytes(proveResponse.proof_bytes));
-    const publicValuesBytes = Array.from(
-      hexToBytes(proveResponse.public_values_bytes),
-    );
+    const proofBytes = hexToBytes(proveResponse.proof_bytes);
+    const publicValuesBytes = hexToBytes(proveResponse.public_values_bytes);
 
     if (pv.cert_nullifier.length !== 32) {
       throw new Error(
@@ -393,8 +391,8 @@ export async function issueCredential(
     const program = new Program(idl as Idl, makeProvider(connection, wallet));
     return await (program.methods as unknown as ProgramMethods)
       .issueCredential(
-        Array.from(proofBytes),
-        Array.from(publicValuesBytes),
+        proofBytes,
+        publicValuesBytes,
         pv.cert_nullifier,
         pv.issuer_pubkey_hash,
       )

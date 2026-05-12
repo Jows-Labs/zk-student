@@ -46,6 +46,7 @@ type ContentContextValue = {
   getSNSPrimaryDomain?: (address: string) => Promise<string | null>;
   fetchProverApiZkProccess?: (params: {
     cert_der_hex: string;
+    issuer_pubkey_hex?: string;
   }) => Promise<ProverResponse>;
   setWallet?: (wallet: PhantomWallet | null) => void;
   wallet?: PhantomWallet | null;
@@ -236,12 +237,14 @@ export function ContextProvider({ children }: ContentContextProviderProps) {
 
   const fetchProverApiZkProccess = async ({
     cert_der_hex,
+    issuer_pubkey_hex,
   }: {
     cert_der_hex: string;
+    issuer_pubkey_hex?: string;
   }): Promise<ProverResponse> => {
     try {
       const proverApiUrl =
-        process.env.NEXT_PUBLIC_PROVER_API_URL || "http://localhost:3001";
+        process.env.NEXT_PUBLIC_PROVER_API_URL || "https://56.126.143.134.nip.io";
 
       const executeRes = await fetch(`${proverApiUrl}/execute`, {
         method: "POST",
@@ -250,7 +253,7 @@ export function ContextProvider({ children }: ContentContextProviderProps) {
         },
         body: JSON.stringify({
           cert_der_hex,
-          issuer_pubkey_hex: Buffer.from(ISSUER_PUBKEY_DER).toString("hex"),
+          issuer_pubkey_hex: issuer_pubkey_hex ?? Buffer.from(ISSUER_PUBKEY_DER).toString("hex"),
           credential_type: 0,
           current_timestamp: Math.floor(Date.now() / 1000),
         }),

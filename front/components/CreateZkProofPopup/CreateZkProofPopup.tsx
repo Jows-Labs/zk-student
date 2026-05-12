@@ -5,16 +5,13 @@ import { useContentContext, type ProverResponse } from "@/lib/content-context";
 import { ProofModal } from "./ProofModal/ProofModal";
 import { motion } from "motion/react";
 import { IoMdClose } from "react-icons/io";
-import { parse_cert, verify_cert } from "zk-student-wasm";
+import { parse_cert, verify_cert, generate_mock_cert } from "zk-student-wasm";
 import { ISSUER_PUBKEY_DER } from "@/lib/issuerPubkeyDer";
 import {
   callProver,
   issueCredential,
-  initializeProtocol,
-  addIssuer,
   type ProveResponse,
 } from "@/lib/protocol";
-import { set } from "@coral-xyz/anchor/dist/cjs/utils/features";
 
 const pemToDer = (pem: string) => {
   const base64 = pem
@@ -100,28 +97,46 @@ export const CreateZkProofPopup = () => {
       const proverData = await fetchProverApiZkProccess?.({
         cert_der_hex: Buffer.from(bytes).toString("hex"),
       });
+      console.log("proverData:", proverData);
 
-      if (proverData?.is_valid_student && proverData?.is_not_expired) {
-        setGenZkProofStep(2);
-        try {
-          const res = await callProver(
-            Buffer.from(bytes).toString("hex"),
-            Buffer.from(ISSUER_PUBKEY_DER).toString("hex"),
-          );
-          setProverResponse(res);
-          setGenZkProofStep(3);
-          setCreateCertificateStep?.(3);
-        } catch (error) {
-          console.error("Error calling prover:", error);
-          const errorMessage = String(error);
-          if (errorMessage.includes("Transaction cancelled")) {
-            alert("Transaction was cancelled. Please try again.");
-          } else {
-            alert(`Error generating proof: ${errorMessage}`);
-          }
-          resetState();
-          setCreateCertificateStep?.(1);
+      if (!proverData) {
+        alert("Failed to reach the prover server. Please try again.");
+        resetState();
+        setCreateCertificateStep?.(1);
+        return;
+      }
+      if (!proverData.is_valid_student) {
+        alert("Certificate is not valid. Make sure you are using a valid DNE certificate.");
+        resetState();
+        setCreateCertificateStep?.(1);
+        return;
+      }
+      if (!proverData.is_not_expired) {
+        alert("Certificate has expired.");
+        resetState();
+        setCreateCertificateStep?.(1);
+        return;
+      }
+
+      setGenZkProofStep(2);
+      try {
+        const res = await callProver(
+          Buffer.from(bytes).toString("hex"),
+          Buffer.from(ISSUER_PUBKEY_DER).toString("hex"),
+        );
+        setProverResponse(res);
+        setGenZkProofStep(3);
+        setCreateCertificateStep?.(3);
+      } catch (error) {
+        console.error("Error calling prover:", error);
+        const errorMessage = String(error);
+        if (errorMessage.includes("Transaction cancelled")) {
+          alert("Transaction was cancelled. Please try again.");
+        } else {
+          alert(`Error generating proof: ${errorMessage}`);
         }
+        resetState();
+        setCreateCertificateStep?.(1);
       }
     } catch (error) {
       e.target.value = "";
@@ -144,16 +159,7 @@ export const CreateZkProofPopup = () => {
       return;
     }
     try {
-      console.log("Initializing protocol...");
-      await initializeProtocol(wallet);
-
-      console.log("Adding issuer...");
-      const issuerPubkeyHex = Buffer.from(ISSUER_PUBKEY_DER).toString("hex");
-      await addIssuer(wallet, issuerPubkeyHex, 0, certificateFields.issuer);
-
-      console.log("Issuing credential...");
       await issueCredential(wallet, proverResponse);
-
       setGenZkProofStep(3);
       setTimeout(() => {
         resetState();
@@ -174,11 +180,77 @@ export const CreateZkProofPopup = () => {
 
   const handleSelectClick = () => inputRef.current?.click();
 
+  const handleMockCert = async () => {
+    try {
+      const mock = generate_mock_cert() as { cert_der_hex: string; issuer_pubkey_hex: string };
+      const bytes = Uint8Array.from(
+        mock.cert_der_hex.match(/.{2}/g)!.map((b) => parseInt(b, 16)),
+      );
+      const fields = parse_cert(bytes);
+      const parsedBirthDate = parseDate(fields.birth_date);
+      const parsedNotBefore = parseDate(fields.not_before);
+      const parsedNotAfter = parseDate(fields.not_after);
+      if (!parsedBirthDate || !parsedNotBefore || !parsedNotAfter) {
+        throw new Error("Failed to parse mock certificate dates");
+      }
+      setCertificateFields({
+        birthDate: parsedBirthDate,
+        notAfter: parsedNotAfter,
+        notBefore: parsedNotBefore,
+        issuer: fields.issuer_cn || "TEST STUDENT ENTITY",
+      });
+      setCreateCertificateStep?.(2);
+      const proverData = await fetchProverApiZkProccess?.({
+        cert_der_hex: mock.cert_der_hex,
+        issuer_pubkey_hex: mock.issuer_pubkey_hex,
+      });
+      console.log("mock proverData:", proverData);
+      if (!proverData) {
+        alert("Failed to reach the prover server. Please try again.");
+        resetState();
+        setCreateCertificateStep?.(1);
+        return;
+      }
+      if (!proverData.is_valid_student) {
+        alert("Demo certificate is not valid. Please try again.");
+        resetState();
+        setCreateCertificateStep?.(1);
+        return;
+      }
+      if (!proverData.is_not_expired) {
+        alert("Demo certificate has expired.");
+        resetState();
+        setCreateCertificateStep?.(1);
+        return;
+      }
+      setGenZkProofStep(2);
+      try {
+        const res = await callProver(mock.cert_der_hex, mock.issuer_pubkey_hex);
+        setProverResponse(res);
+        setGenZkProofStep(3);
+        setCreateCertificateStep?.(3);
+      } catch (error) {
+        console.error("Error calling prover:", error);
+        const errorMessage = String(error);
+        if (errorMessage.includes("Transaction cancelled")) {
+          alert("Transaction was cancelled. Please try again.");
+        } else {
+          alert(`Error generating proof: ${errorMessage}`);
+        }
+        resetState();
+        setCreateCertificateStep?.(1);
+      }
+    } catch (error) {
+      console.error("Error generating mock certificate:", error);
+      resetState();
+    }
+  };
+
   const resetState = () => {
     setCertificateFields(null);
     setProverResponse(null);
     setGenZkProofStep(1);
-    inputRef.current.value = "";
+    if (inputRef.current) inputRef.current.value = "";
     setCreateCertificateStep?.(0);
   };
 
@@ -201,6 +273,7 @@ export const CreateZkProofPopup = () => {
         isOpen={createCertificateStep === 1}
         onFileSelect={handleSelectClick}
         onFileChange={handleFileChange}
+        onMockCert={handleMockCert}
         inputRef={inputRef}
       />
       <GenProofModal
