@@ -4,7 +4,8 @@ import idl from "./zk_student_protocol.json";
 import { PhantomWallet } from "@/interfaces/interfaces";
 
 const RPC = "https://api.devnet.solana.com";
-const PROVER_URL = process.env.NEXT_PUBLIC_PROVER_API_URL ?? "https://56.126.143.134.nip.io";
+const PROVER_URL =
+  process.env.NEXT_PUBLIC_PROVER_API_URL ?? "https://56.126.143.134.nip.io";
 
 // SP1 vkey hash from the prover API (circuits/prover/API.md)
 const SP1_VKEY_HASH =
@@ -187,18 +188,20 @@ interface ProgramMethods {
   initialize(vkeyHash: number[]): RpcBuilder;
   addIssuer(
     issuerPubkeyHash: number[],
-    credentialType: { dne: Record<string, never> } | { isic: Record<string, never> },
+    credentialType:
+      | { dne: Record<string, never> }
+      | { isic: Record<string, never> },
     name: string,
   ): RpcBuilder;
   issueCredential(
-    proofBytes: number[],
-    publicValuesBytes: number[],
+    proofBytes: Uint8Array,
+    publicValuesBytes: Uint8Array,
     certNullifier: number[],
     issuerPubkeyHash: number[],
   ): { accounts(a: { wallet: PublicKey }): RpcBuilder };
   renewCredential(
-    proofBytes: number[],
-    publicValuesBytes: number[],
+    proofBytes: Uint8Array,
+    publicValuesBytes: Uint8Array,
     certNullifier: number[],
     issuerPubkeyHash: number[],
   ): { accounts(a: { wallet: PublicKey }): RpcBuilder };
@@ -288,7 +291,9 @@ export async function initializeProtocol(
     const connection = new Connection(RPC, "confirmed");
     const program = new Program(idl as Idl, makeProvider(connection, wallet));
     const vkeyHashBytes = Array.from(hexToBytes(SP1_VKEY_HASH));
-    return await (program.methods as unknown as ProgramMethods).initialize(vkeyHashBytes).rpc();
+    return await (program.methods as unknown as ProgramMethods)
+      .initialize(vkeyHashBytes)
+      .rpc();
   } catch (error) {
     if (isTransactionCancelled(error)) {
       throw new Error("Transaction cancelled by user");
