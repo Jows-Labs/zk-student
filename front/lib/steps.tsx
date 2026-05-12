@@ -20,7 +20,7 @@ export const steps: {
   {
     Icon: MdOutlineUploadFile,
     title: "Upload",
-    description: "Submit your student ID or email.",
+    description: "Submit your student ID.",
   },
   {
     Icon: LuShieldCheck,
