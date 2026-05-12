@@ -58,7 +58,7 @@ The credential records: wallet, issuer hash, credential type, `issued_at`, `expi
 | Devnet | `zk_student_protocol` | `8GzzGmVbwTZ982GF7kpbchEf2VVv6wWXHZrmtj8dJJ4z` |
 | Devnet | `zk_meia` | `HoK1YHdbfTQppTnquqAcGQ4v3DZczz7e7CnmDSm9v9FX` |
 
-Prover API: `http://56.126.143.134:3001` — see `circuits/prover/API.md` for endpoints.
+Prover API: `https://56.126.143.134.nip.io` — see `circuits/prover/API.md` for endpoints.
 
 ---
 

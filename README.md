@@ -34,7 +34,7 @@ Written in Rust, compiled to RISC-V via SP1. Takes a raw certificate DER as priv
 
 ### Prover API (`circuits/prover/`)
 
-Rust HTTP server deployed on AWS EC2 (`http://56.126.143.134:3001`).
+Rust HTTP server deployed on AWS EC2 (`https://56.126.143.134.nip.io`).
 
 | Endpoint | Description |
 |----------|-------------|
@@ -114,7 +114,7 @@ No CPI needed. Just pass the PDA as an account and let Anchor re-derive it from 
 | Devnet | `zk_student_protocol` | `8GzzGmVbwTZ982GF7kpbchEf2VVv6wWXHZrmtj8dJJ4z` |
 | Devnet | `zk_meia` | `HoK1YHdbfTQppTnquqAcGQ4v3DZczz7e7CnmDSm9v9FX` |
 
-Prover API: `http://56.126.143.134:3001`
+Prover API: `https://56.126.143.134.nip.io`
 
 ## Tech stack
 

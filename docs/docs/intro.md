@@ -24,4 +24,4 @@ The international ISIC does not carry a signed certificate. Proving ISIC members
 | Devnet | `zk_student_protocol` | `8GzzGmVbwTZ982GF7kpbchEf2VVv6wWXHZrmtj8dJJ4z` |
 | Devnet | `zk_meia` (example) | `HoK1YHdbfTQppTnquqAcGQ4v3DZczz7e7CnmDSm9v9FX` |
 
-Prover API: `http://56.126.143.134:3001`
+Prover API: `https://56.126.143.134.nip.io`
