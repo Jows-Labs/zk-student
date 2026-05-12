@@ -1,4 +1,5 @@
 import { useState, useRef, type ChangeEvent } from "react";
+import { Confetti, type ConfettiRef } from "@/components/ui/confetti";
 import { UploadPemModal } from "./UploadPemModal/UploadPemModal";
 import { GenProofModal } from "./GeneratingProofModal/GenProofModal";
 import { useContentContext, type ProverResponse } from "@/lib/content-context";
@@ -49,9 +50,11 @@ export const CreateZkProofPopup = () => {
     setCreateCertificateStep,
     fetchProverApiZkProccess,
     wallet,
+    refreshCredential,
   } = useContentContext();
 
   const inputRef = useRef<HTMLInputElement>(null!);
+  const confettiRef = useRef<ConfettiRef>(null);
   const [certificateFields, setCertificateFields] = useState<{
     birthDate: Date;
     notAfter: Date;
@@ -160,9 +163,10 @@ export const CreateZkProofPopup = () => {
     try {
       await issueCredential(wallet, proverResponse);
       setGenZkProofStep(3);
-      setTimeout(() => {
-        resetState();
-      }, 2000);
+      confettiRef.current?.fire({ particleCount: 150, spread: 80 });
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+      await refreshCredential?.();
+      resetState();
     } catch (credentialError) {
       console.error("Error in transaction process:", credentialError);
       const errorMessage = String(credentialError);
@@ -259,6 +263,11 @@ export const CreateZkProofPopup = () => {
 
   return (createCertificateStep ?? 0) >= 1 ? (
     <div className="fixed inset-0 bg-black bg-black/70 flex items-center justify-center z-500">
+      <Confetti
+        ref={confettiRef}
+        manualstart
+        className="pointer-events-none absolute inset-0 z-[600] size-full"
+      />
       <motion.div
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
