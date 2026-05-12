@@ -4,7 +4,7 @@ import idl from "./zk_student_protocol.json";
 import { PhantomWallet } from "@/interfaces/interfaces";
 
 const RPC = "https://api.devnet.solana.com";
-const PROVER_URL = "https://56.126.143.134.nip.io";
+const PROVER_URL = process.env.NEXT_PUBLIC_PROVER_API_URL ?? "http://localhost:3001";
 
 // SP1 vkey hash from the prover API (circuits/prover/API.md)
 const SP1_VKEY_HASH =
