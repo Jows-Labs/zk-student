@@ -10,6 +10,7 @@ import { ISSUER_PUBKEY_DER } from "@/lib/issuerPubkeyDer";
 import {
   callProver,
   issueCredential,
+  bytesToHex,
   type ProveResponse,
 } from "@/lib/protocol";
 
@@ -91,13 +92,11 @@ export const CreateZkProofPopup = () => {
         notBefore: parsedNotBefore,
         issuer: fields.issuer_cn || "N/A",
       });
-      console.log("Certificate fields:", fields);
 
       setCreateCertificateStep?.(2);
       const proverData = await fetchProverApiZkProccess?.({
-        cert_der_hex: Buffer.from(bytes).toString("hex"),
+        cert_der_hex: bytesToHex(bytes),
       });
-      console.log("proverData:", proverData);
 
       if (!proverData) {
         alert("Failed to reach the prover server. Please try again.");
@@ -121,8 +120,8 @@ export const CreateZkProofPopup = () => {
       setGenZkProofStep(2);
       try {
         const res = await callProver(
-          Buffer.from(bytes).toString("hex"),
-          Buffer.from(ISSUER_PUBKEY_DER).toString("hex"),
+          bytesToHex(bytes),
+          bytesToHex(ISSUER_PUBKEY_DER),
         );
         setProverResponse(res);
         setGenZkProofStep(3);
@@ -204,7 +203,6 @@ export const CreateZkProofPopup = () => {
         cert_der_hex: mock.cert_der_hex,
         issuer_pubkey_hex: mock.issuer_pubkey_hex,
       });
-      console.log("mock proverData:", proverData);
       if (!proverData) {
         alert("Failed to reach the prover server. Please try again.");
         resetState();

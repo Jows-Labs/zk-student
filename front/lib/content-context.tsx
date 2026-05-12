@@ -16,6 +16,7 @@ import {
   type StudentCredential,
   formatCredential,
   type CredentialFormatted,
+  bytesToHex,
 } from "./protocol";
 
 interface SolanaWindow extends Window {
@@ -253,7 +254,7 @@ export function ContextProvider({ children }: ContentContextProviderProps) {
         },
         body: JSON.stringify({
           cert_der_hex,
-          issuer_pubkey_hex: issuer_pubkey_hex ?? Buffer.from(ISSUER_PUBKEY_DER).toString("hex"),
+          issuer_pubkey_hex: issuer_pubkey_hex ?? bytesToHex(ISSUER_PUBKEY_DER),
           credential_type: 0,
           current_timestamp: Math.floor(Date.now() / 1000),
         }),
