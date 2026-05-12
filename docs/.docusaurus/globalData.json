@@ -1,0 +1,58 @@
+{
+  "docusaurus-plugin-content-docs": {
+    "default": {
+      "path": "/zk-student/",
+      "versions": [
+        {
+          "name": "current",
+          "label": "Next",
+          "isLast": true,
+          "path": "/zk-student/",
+          "mainDocId": "intro",
+          "docs": [
+            {
+              "id": "how-it-works",
+              "path": "/zk-student/how-it-works",
+              "sidebar": "docs"
+            },
+            {
+              "id": "integration",
+              "path": "/zk-student/integration",
+              "sidebar": "docs"
+            },
+            {
+              "id": "intro",
+              "path": "/zk-student/",
+              "sidebar": "docs"
+            },
+            {
+              "id": "protocol",
+              "path": "/zk-student/protocol",
+              "sidebar": "docs"
+            },
+            {
+              "id": "prover-api",
+              "path": "/zk-student/prover-api",
+              "sidebar": "docs"
+            },
+            {
+              "id": "trust-model",
+              "path": "/zk-student/trust-model",
+              "sidebar": "docs"
+            }
+          ],
+          "draftIds": [],
+          "sidebars": {
+            "docs": {
+              "link": {
+                "path": "/zk-student/",
+                "label": "intro"
+              }
+            }
+          }
+        }
+      ],
+      "breadcrumbs": true
+    }
+  }
+}

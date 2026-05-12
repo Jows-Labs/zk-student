@@ -1,0 +1,28 @@
+{
+  "id": "integration",
+  "title": "Integration",
+  "description": "Integrating ZK-Student into your Solana program requires no CPI. You just read the StudentCredential PDA and let Anchor verify it.",
+  "source": "@site/docs/integration.md",
+  "sourceDirName": ".",
+  "slug": "/integration",
+  "permalink": "/zk-student/integration",
+  "draft": false,
+  "unlisted": false,
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 5,
+  "frontMatter": {
+    "id": "integration",
+    "title": "Integration",
+    "sidebar_position": 5
+  },
+  "sidebar": "docs",
+  "previous": {
+    "title": "Prover API",
+    "permalink": "/zk-student/prover-api"
+  },
+  "next": {
+    "title": "Trust model",
+    "permalink": "/zk-student/trust-model"
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "id": "trust-model",
+  "title": "Trust model",
+  "description": "What the protocol authority controls",
+  "source": "@site/docs/trust-model.md",
+  "sourceDirName": ".",
+  "slug": "/trust-model",
+  "permalink": "/zk-student/trust-model",
+  "draft": false,
+  "unlisted": false,
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 6,
+  "frontMatter": {
+    "id": "trust-model",
+    "title": "Trust model",
+    "sidebar_position": 6
+  },
+  "sidebar": "docs",
+  "previous": {
+    "title": "Integration",
+    "permalink": "/zk-student/integration"
+  }
+}
