@@ -10,7 +10,7 @@ import ProverPlayground from "@site/src/components/ProverPlayground";
 
 The prover server is a Rust HTTP server deployed on AWS EC2.
 
-**Base URL:** `http://56.126.143.134:3001`
+**Base URL:** `https://56.126.143.134.nip.io`
 
 For local development: `http://localhost:3001`
 
@@ -29,7 +29,7 @@ The deployed server runs in mock mode. Full Groth16 proof generation requires at
 ## GET /health
 
 ```bash
-curl http://56.126.143.134:3001/health
+curl https://56.126.143.134.nip.io/health
 # → ok
 ```
 
