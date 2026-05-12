@@ -1,9 +1,12 @@
 import { steps } from "@/lib/steps";
+import { useContentContext } from "@/lib/content-context";
 import { StepIcon } from "../Step/StepIcon";
 import { StepText } from "../Step/StepText";
 
 export const ZKStudentsSteps = () => {
-  const step = 2;
+  const { walletAddress, studentCredential } = useContentContext();
+
+  const step = studentCredential ? 5 : walletAddress ? 2 : 1;
 
   const columns = steps.length;
   const startOffset = (0.5 / columns) * 100;

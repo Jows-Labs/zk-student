@@ -52,6 +52,7 @@ type ContentContextValue = {
   setWallet?: (wallet: PhantomWallet | null) => void;
   wallet?: PhantomWallet | null;
   studentCredential?: CredentialFormatted | null;
+  refreshCredential?: () => Promise<void>;
 };
 
 const ContentContext = createContext<ContentContextValue>({
@@ -282,6 +283,9 @@ export function ContextProvider({ children }: ContentContextProviderProps) {
         setWallet,
         wallet,
         studentCredential,
+        refreshCredential: walletAddress
+          ? () => checkStudentCredential(walletAddress).then(() => undefined)
+          : undefined,
       }}
     >
       {children}
