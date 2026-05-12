@@ -102,7 +102,7 @@ export function formatTimestamp(timestamp: bigint | string | number): string {
         ? hexToNumber(timestamp) * 1000
         : timestamp * 1000;
 
-  return new Date(ms).toLocaleDateString("pt-BR", {
+  return new Date(ms).toLocaleDateString("en-US", {
     year: "numeric",
     month: "long",
     day: "numeric",
@@ -139,14 +139,14 @@ export function formatCredential(
     credential,
     issuedAtDate,
     expiresAtDate,
-    issuedAtFormatted: issuedAtDate.toLocaleDateString("pt-BR", {
+    issuedAtFormatted: issuedAtDate.toLocaleDateString("en-US", {
       year: "numeric",
       month: "long",
       day: "numeric",
       hour: "2-digit",
       minute: "2-digit",
     }),
-    expiresAtFormatted: expiresAtDate.toLocaleDateString("pt-BR", {
+    expiresAtFormatted: expiresAtDate.toLocaleDateString("en-US", {
       year: "numeric",
       month: "long",
       day: "numeric",
