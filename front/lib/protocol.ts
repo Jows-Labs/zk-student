@@ -393,8 +393,8 @@ export async function issueCredential(
     const program = new Program(idl as Idl, makeProvider(connection, wallet));
     return await (program.methods as unknown as ProgramMethods)
       .issueCredential(
-        Buffer.from(proofBytes),
-        Buffer.from(publicValuesBytes),
+        Array.from(proofBytes),
+        Array.from(publicValuesBytes),
         pv.cert_nullifier,
         pv.issuer_pubkey_hash,
       )
